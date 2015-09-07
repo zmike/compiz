@@ -403,7 +403,7 @@ mode_desc (int mode)	/* for debugging messages */
 static void
 check_gl_error (const char *s)
 {
-  GLenum i = glapi->glGetError();
+  GLenum i = compiz_glapi->glGetError();
   if (i == GL_NO_ERROR) return;
   fprintf (stderr, "jwzgles: GL ERROR: %s: %s\n", s, mode_desc(i));
 }
@@ -718,7 +718,7 @@ glDeleteLists (int id0, int range)
           if (L->fns) 
             free (L->fns);
           if (L->buffer)
-            glapi->glDeleteBuffers (1, &L->buffer);
+            compiz_glapi->glDeleteBuffers (1, &L->buffer);
 
           memset (L, 0, sizeof (*L));
           L->id = id;
@@ -766,7 +766,7 @@ glNormal3fv (const GLfloat *v)
         }
       else				/* outside glBegin */
         {
-          glapi->glNormal3f (v[0], v[1], v[2]);
+          compiz_glapi->glNormal3f (v[0], v[1], v[2]);
           CHECK("glNormal3f");
         }
     }
@@ -913,7 +913,7 @@ glColor4fv (const GLfloat *v)
         }
       else				/* outside glBegin */
         {
-          glapi->glColor4f (v[0], v[1], v[2], v[3]);
+          compiz_glapi->glColor4f (v[0], v[1], v[2], v[3]);
           CHECK("glColor4");
         }
     }
@@ -1224,7 +1224,7 @@ glMaterialfv (GLenum face, GLenum pname, const GLfloat *color)
         LOG7 ("direct %-12s %s %s %7.3f %7.3f %7.3f %7.3f", "glMaterialfv",
               mode_desc(face), mode_desc(pname),
               color[0], color[1], color[2], color[3]);
-      glapi->glMaterialfv (face, pname, color);  /* the real one */
+      compiz_glapi->glMaterialfv (face, pname, color);  /* the real one */
       CHECK("glMaterialfv");
     }
 }
@@ -1507,7 +1507,7 @@ glDrawBuffer (GLenum buf)
 # ifndef GL_VERSION_ES_CM_1_0  /* not compiling against OpenGLES 1.x */
       if (! state->replaying_list)
         LOG1 ("direct %-12s", "glDrawBuffer");
-      glapi->glDrawBuffer (buf);      /* the real one */
+      compiz_glapi->glDrawBuffer (buf);      /* the real one */
       CHECK("glDrawBuffer");
 # endif
     }
@@ -1614,10 +1614,10 @@ glEnd (void)
   else if (s->mode == GL_POLYGON)
     s->mode = GL_TRIANGLE_FAN;		/* They do the same thing! */
 
-  glapi->glVertexPointer   (4, GL_FLOAT, sizeof(*s->verts), s->verts);  /* XYZW */
-  glapi->glNormalPointer   (   GL_FLOAT, sizeof(*s->norms), s->norms);  /* XYZ  */
-  glapi->glTexCoordPointer (4, GL_FLOAT, sizeof(*s->tex),   s->tex);    /* STRQ */
-  glapi->glColorPointer    (4, GL_FLOAT, sizeof(*s->color), s->color);  /* RGBA */
+  compiz_glapi->glVertexPointer   (4, GL_FLOAT, sizeof(*s->verts), s->verts);  /* XYZW */
+  compiz_glapi->glNormalPointer   (   GL_FLOAT, sizeof(*s->norms), s->norms);  /* XYZ  */
+  compiz_glapi->glTexCoordPointer (4, GL_FLOAT, sizeof(*s->tex),   s->tex);    /* STRQ */
+  compiz_glapi->glColorPointer    (4, GL_FLOAT, sizeof(*s->color), s->color);  /* RGBA */
   CHECK("glColorPointer");
 
   /* If there were no calls to glNormal3f inside of glBegin/glEnd,
@@ -1702,9 +1702,9 @@ glEnd (void)
   else
     is_mat = 0;
 
-  glapi->glBindBuffer (GL_ARRAY_BUFFER, 0);    /* This comes later. */
+  compiz_glapi->glBindBuffer (GL_ARRAY_BUFFER, 0);    /* This comes later. */
   glDrawArrays (s->mode, 0, s->count);
-  glapi->glBindBuffer (GL_ARRAY_BUFFER, 0);    /* Keep out of others' hands */
+  compiz_glapi->glBindBuffer (GL_ARRAY_BUFFER, 0);    /* Keep out of others' hands */
 
 # define RESET(VAR,FN,ARG) do { \
          if (is_##VAR != was_##VAR) { \
@@ -1751,7 +1751,7 @@ optimize_arrays (void)
   Assert (L, "no list");
   Assert (!L->buffer, "list already has a buffer");
 
-  glapi->glGenBuffers (1, &buf_name);
+  compiz_glapi->glGenBuffers (1, &buf_name);
   CHECK("glGenBuffers");
   if (! buf_name) return;
 
@@ -1804,17 +1804,17 @@ optimize_arrays (void)
   if (combo_count == 0)		/* Nothing to do! */
     {
       if (combo) free (combo);
-      glapi->glDeleteBuffers (1, &buf_name);
+      compiz_glapi->glDeleteBuffers (1, &buf_name);
       L->buffer = 0;
       return;
     }
 
-  glapi->glBindBuffer (GL_ARRAY_BUFFER, buf_name);
-  glapi->glBufferData (GL_ARRAY_BUFFER, 
+  compiz_glapi->glBindBuffer (GL_ARRAY_BUFFER, buf_name);
+  compiz_glapi->glBufferData (GL_ARRAY_BUFFER, 
                 combo_count * sizeof (*combo),
                 combo,
                 GL_STATIC_DRAW);
-  glapi->glBindBuffer (GL_ARRAY_BUFFER, 0);    /* Keep out of others' hands */
+  compiz_glapi->glBindBuffer (GL_ARRAY_BUFFER, 0);    /* Keep out of others' hands */
 
   LOG3("  loaded %d floats of list %d into VBO %d",
        combo_count, state->compiling_list, buf_name);
@@ -2063,11 +2063,11 @@ save_arrays (list_fn *F, int count)
 
 /*  if (state->set.count > 0) */
     {
-      glapi->glGetIntegerv (GL_VERTEX_ARRAY_BUFFER_BINDING, &A[i].binding);
-      glapi->glGetIntegerv (GL_VERTEX_ARRAY_SIZE,    &A[i].size);
-      glapi->glGetIntegerv (GL_VERTEX_ARRAY_TYPE,    &A[i].type);
-      glapi->glGetIntegerv (GL_VERTEX_ARRAY_STRIDE,  &A[i].stride);
-      glapi->glGetPointerv (GL_VERTEX_ARRAY_POINTER, &A[i].data);
+      compiz_glapi->glGetIntegerv (GL_VERTEX_ARRAY_BUFFER_BINDING, &A[i].binding);
+      compiz_glapi->glGetIntegerv (GL_VERTEX_ARRAY_SIZE,    &A[i].size);
+      compiz_glapi->glGetIntegerv (GL_VERTEX_ARRAY_TYPE,    &A[i].type);
+      compiz_glapi->glGetIntegerv (GL_VERTEX_ARRAY_STRIDE,  &A[i].stride);
+      compiz_glapi->glGetPointerv (GL_VERTEX_ARRAY_POINTER, &A[i].data);
       CHECK("glGetPointerv");
       copy_array_data (&A[i], count, "vert");
     }
@@ -2076,10 +2076,10 @@ save_arrays (list_fn *F, int count)
   if (state->set.ncount > 1)
     {
       A[i].size = 3;
-      glapi->glGetIntegerv (GL_NORMAL_ARRAY_BUFFER_BINDING, &A[i].binding);
-      glapi->glGetIntegerv (GL_NORMAL_ARRAY_TYPE,    &A[i].type);
-      glapi->glGetIntegerv (GL_NORMAL_ARRAY_STRIDE,  &A[i].stride);
-      glapi->glGetPointerv (GL_NORMAL_ARRAY_POINTER, &A[i].data);
+      compiz_glapi->glGetIntegerv (GL_NORMAL_ARRAY_BUFFER_BINDING, &A[i].binding);
+      compiz_glapi->glGetIntegerv (GL_NORMAL_ARRAY_TYPE,    &A[i].type);
+      compiz_glapi->glGetIntegerv (GL_NORMAL_ARRAY_STRIDE,  &A[i].stride);
+      compiz_glapi->glGetPointerv (GL_NORMAL_ARRAY_POINTER, &A[i].data);
       CHECK("glGetPointerv");
       copy_array_data (&A[i], count, "norm");
     }
@@ -2087,11 +2087,11 @@ save_arrays (list_fn *F, int count)
   i++;
   if (state->set.tcount > 1)
     {
-      glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING, &A[i].binding);
-      glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_SIZE,    &A[i].size);
-      glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_TYPE,    &A[i].type);
-      glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_STRIDE,  &A[i].stride);
-      glapi->glGetPointerv (GL_TEXTURE_COORD_ARRAY_POINTER, &A[i].data);
+      compiz_glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING, &A[i].binding);
+      compiz_glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_SIZE,    &A[i].size);
+      compiz_glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_TYPE,    &A[i].type);
+      compiz_glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_STRIDE,  &A[i].stride);
+      compiz_glapi->glGetPointerv (GL_TEXTURE_COORD_ARRAY_POINTER, &A[i].data);
       CHECK("glGetPointerv");
       copy_array_data (&A[i], count, "tex ");
     }
@@ -2099,11 +2099,11 @@ save_arrays (list_fn *F, int count)
   i++;
   if (state->set.ccount > 1)
     {
-      glapi->glGetIntegerv (GL_COLOR_ARRAY_BUFFER_BINDING, &A[i].binding);
-      glapi->glGetIntegerv (GL_COLOR_ARRAY_SIZE,    &A[i].size);
-      glapi->glGetIntegerv (GL_COLOR_ARRAY_TYPE,    &A[i].type);
-      glapi->glGetIntegerv (GL_COLOR_ARRAY_STRIDE,  &A[i].stride);
-      glapi->glGetPointerv (GL_COLOR_ARRAY_POINTER, &A[i].data);
+      compiz_glapi->glGetIntegerv (GL_COLOR_ARRAY_BUFFER_BINDING, &A[i].binding);
+      compiz_glapi->glGetIntegerv (GL_COLOR_ARRAY_SIZE,    &A[i].size);
+      compiz_glapi->glGetIntegerv (GL_COLOR_ARRAY_TYPE,    &A[i].type);
+      compiz_glapi->glGetIntegerv (GL_COLOR_ARRAY_STRIDE,  &A[i].stride);
+      compiz_glapi->glGetPointerv (GL_COLOR_ARRAY_POINTER, &A[i].data);
       CHECK("glGetPointerv");
       copy_array_data (&A[i], count, "col ");
     }
@@ -2204,41 +2204,41 @@ dump_direct_array_data (int count)
 
   if (glIsEnabled (GL_VERTEX_ARRAY))
     {
-      glapi->glGetIntegerv (GL_VERTEX_ARRAY_BUFFER_BINDING, &A.binding);
-      glapi->glGetIntegerv (GL_VERTEX_ARRAY_SIZE,    &A.size);
-      glapi->glGetIntegerv (GL_VERTEX_ARRAY_TYPE,    &A.type);
-      glapi->glGetIntegerv (GL_VERTEX_ARRAY_STRIDE,  &A.stride);
-      glapi->glGetPointerv (GL_VERTEX_ARRAY_POINTER, &A.data);
+      compiz_glapi->glGetIntegerv (GL_VERTEX_ARRAY_BUFFER_BINDING, &A.binding);
+      compiz_glapi->glGetIntegerv (GL_VERTEX_ARRAY_SIZE,    &A.size);
+      compiz_glapi->glGetIntegerv (GL_VERTEX_ARRAY_TYPE,    &A.type);
+      compiz_glapi->glGetIntegerv (GL_VERTEX_ARRAY_STRIDE,  &A.stride);
+      compiz_glapi->glGetPointerv (GL_VERTEX_ARRAY_POINTER, &A.data);
       A.bytes = count * A.stride;
       dump_array_data (&A, count, "direct", "vertex ", 0);
     }
   if (glIsEnabled (GL_NORMAL_ARRAY))
     {
       A.size = 0;
-      glapi->glGetIntegerv (GL_NORMAL_ARRAY_BUFFER_BINDING, &A.binding);
-      glapi->glGetIntegerv (GL_NORMAL_ARRAY_TYPE,    &A.type);
-      glapi->glGetIntegerv (GL_NORMAL_ARRAY_STRIDE,  &A.stride);
-      glapi->glGetPointerv (GL_NORMAL_ARRAY_POINTER, &A.data);
+      compiz_glapi->glGetIntegerv (GL_NORMAL_ARRAY_BUFFER_BINDING, &A.binding);
+      compiz_glapi->glGetIntegerv (GL_NORMAL_ARRAY_TYPE,    &A.type);
+      compiz_glapi->glGetIntegerv (GL_NORMAL_ARRAY_STRIDE,  &A.stride);
+      compiz_glapi->glGetPointerv (GL_NORMAL_ARRAY_POINTER, &A.data);
       A.bytes = count * A.stride;
       dump_array_data (&A, count, "direct", "normal ", 0);
     }
   if (glIsEnabled (GL_TEXTURE_COORD_ARRAY))
     {
-      glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING, &A.binding);
-      glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_SIZE,    &A.size);
-      glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_TYPE,    &A.type);
-      glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_STRIDE,  &A.stride);
-      glapi->glGetPointerv (GL_TEXTURE_COORD_ARRAY_POINTER, &A.data);
+      compiz_glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_BUFFER_BINDING, &A.binding);
+      compiz_glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_SIZE,    &A.size);
+      compiz_glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_TYPE,    &A.type);
+      compiz_glapi->glGetIntegerv (GL_TEXTURE_COORD_ARRAY_STRIDE,  &A.stride);
+      compiz_glapi->glGetPointerv (GL_TEXTURE_COORD_ARRAY_POINTER, &A.data);
       A.bytes = count * A.stride;
       dump_array_data (&A, count, "direct", "texture", 0);
     }
   if (glIsEnabled (GL_COLOR_ARRAY))
     {
-      glapi->glGetIntegerv (GL_COLOR_ARRAY_BUFFER_BINDING, &A.binding);
-      glapi->glGetIntegerv (GL_COLOR_ARRAY_SIZE,    &A.size);
-      glapi->glGetIntegerv (GL_COLOR_ARRAY_TYPE,    &A.type);
-      glapi->glGetIntegerv (GL_COLOR_ARRAY_STRIDE,  &A.stride);
-      glapi->glGetPointerv (GL_COLOR_ARRAY_POINTER, &A.data);
+      compiz_glapi->glGetIntegerv (GL_COLOR_ARRAY_BUFFER_BINDING, &A.binding);
+      compiz_glapi->glGetIntegerv (GL_COLOR_ARRAY_SIZE,    &A.size);
+      compiz_glapi->glGetIntegerv (GL_COLOR_ARRAY_TYPE,    &A.type);
+      compiz_glapi->glGetIntegerv (GL_COLOR_ARRAY_STRIDE,  &A.stride);
+      compiz_glapi->glGetPointerv (GL_COLOR_ARRAY_POINTER, &A.data);
       A.bytes = count * A.stride;
       dump_array_data (&A, count, "direct", "color ", 0);
     }
@@ -2337,23 +2337,23 @@ restore_arrays (list_fn *F, int count)
       Assert ((A[i].binding || A[i].data),
               "array has neither buffer binding nor data");
 
-      glapi->glBindBuffer (GL_ARRAY_BUFFER, A[i].binding);
+      compiz_glapi->glBindBuffer (GL_ARRAY_BUFFER, A[i].binding);
       CHECK("glBindBuffer");
 
       switch (i) {
-      case 0: glapi->glVertexPointer  (A[i].size, A[i].type, A[i].stride, A[i].data);
+      case 0: compiz_glapi->glVertexPointer  (A[i].size, A[i].type, A[i].stride, A[i].data);
         name = "vertex ";
         CHECK("glVertexPointer");
         break;
-      case 1: glapi->glNormalPointer  (           A[i].type, A[i].stride, A[i].data);
+      case 1: compiz_glapi->glNormalPointer  (           A[i].type, A[i].stride, A[i].data);
         name = "normal ";
         CHECK("glNormalPointer");
         break;
-      case 2: glapi->glTexCoordPointer(A[i].size, A[i].type, A[i].stride, A[i].data);
+      case 2: compiz_glapi->glTexCoordPointer(A[i].size, A[i].type, A[i].stride, A[i].data);
         name = "texture";
         CHECK("glTexCoordPointer");
         break;
-      case 3: glapi->glColorPointer   (A[i].size, A[i].type, A[i].stride, A[i].data);
+      case 3: compiz_glapi->glColorPointer   (A[i].size, A[i].type, A[i].stride, A[i].data);
         name = "color  ";
         CHECK("glColorPointer");
         break;
@@ -2365,7 +2365,7 @@ restore_arrays (list_fn *F, int count)
 # endif
     }
 
-  glapi->glBindBuffer (GL_ARRAY_BUFFER, 0);    /* Keep out of others' hands */
+  compiz_glapi->glBindBuffer (GL_ARRAY_BUFFER, 0);    /* Keep out of others' hands */
 }
 
 
@@ -2389,7 +2389,7 @@ glDrawArrays (GLuint mode, GLuint first, GLuint count)
         dump_direct_array_data (first + count);
       }
 # endif
-      glapi->glDrawArrays (mode, first, count);  /* the real one */
+      compiz_glapi->glDrawArrays (mode, first, count);  /* the real one */
       CHECK("glDrawArrays");
     }
 }
@@ -2417,7 +2417,7 @@ glInterleavedArrays (GLenum format, GLsizei stride, const void *data)
 
   switch (format) {
   case GL_V2F:
-    glapi->glVertexPointer (2, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (2, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     if (!state->replaying_list)
       LOG3 ("%s  -> glVertexPointer 2 FLOAT %d %lX", 
@@ -2425,7 +2425,7 @@ glInterleavedArrays (GLenum format, GLsizei stride, const void *data)
             stride, (unsigned long) c);
     break;
   case GL_V3F:
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     if (!state->replaying_list)
       LOG3 ("%s  -> glVertexPointer 3 FLOAT %d %lX", 
@@ -2436,43 +2436,43 @@ glInterleavedArrays (GLenum format, GLsizei stride, const void *data)
     if (stride == 0)
       stride = 4*B + 2*F;
     glEnableClientState (GL_COLOR_ARRAY);
-    glapi->glColorPointer (4, GL_UNSIGNED_BYTE, stride, c);
+    compiz_glapi->glColorPointer (4, GL_UNSIGNED_BYTE, stride, c);
     CHECK("glColorPointer");
     c += 4*B;	/* #### might be incorrect float-aligned address */
-    glapi->glVertexPointer (2, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (2, GL_FLOAT, stride, c);
     break;
   case GL_C4UB_V3F:
     if (stride == 0)
       stride = 4*B + 3*F;
     glEnableClientState (GL_COLOR_ARRAY);
-    glapi->glColorPointer (4, GL_UNSIGNED_BYTE, stride, c);
+    compiz_glapi->glColorPointer (4, GL_UNSIGNED_BYTE, stride, c);
     CHECK("glColorPointer");
     c += 4*B;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_C3F_V3F:
     if (stride == 0)
       stride = 3*F + 3*F;
     glEnableClientState (GL_COLOR_ARRAY);
-    glapi->glColorPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glColorPointer (3, GL_FLOAT, stride, c);
     CHECK("glColorPointer");
     c += 3*F;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_N3F_V3F:
     if (stride == 0)
       stride = 3*F + 3*F;
     glEnableClientState (GL_NORMAL_ARRAY);
-    glapi->glNormalPointer (GL_FLOAT, stride, c);
+    compiz_glapi->glNormalPointer (GL_FLOAT, stride, c);
     CHECK("glNormalPointer");
     if (!state->replaying_list)
       LOG3 ("%s  -> glNormalPointer   FLOAT %d %lX", 
             (state->compiling_list || state->replaying_list ? "  " : ""),
             stride, (unsigned long) c);
     c += 3*F;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     if (!state->replaying_list)
       LOG3 ("%s  -> glVertexPointer 3 FLOAT %d %lX", 
@@ -2483,112 +2483,112 @@ glInterleavedArrays (GLenum format, GLsizei stride, const void *data)
     if (stride == 0)
       stride = 4*F + 3*F + 3*F;
     glEnableClientState (GL_COLOR_ARRAY);
-    glapi->glColorPointer (4, GL_FLOAT, stride, c);
+    compiz_glapi->glColorPointer (4, GL_FLOAT, stride, c);
     CHECK("glColorPointer");
     c += 4*F;
     glEnableClientState (GL_NORMAL_ARRAY);
-    glapi->glNormalPointer (GL_FLOAT, stride, c);
+    compiz_glapi->glNormalPointer (GL_FLOAT, stride, c);
     CHECK("glNormalPointer");
     c += 3*F;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_T2F_V3F:
     if (stride == 0)
       stride = 2*F + 3*F;
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
+    compiz_glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
     CHECK("glTexCoordPointer");
     c += 2*F;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_T4F_V4F:
     if (stride == 0)
       stride = 4*F + 4*F;
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    glapi->glTexCoordPointer (4, GL_FLOAT, stride, c);
+    compiz_glapi->glTexCoordPointer (4, GL_FLOAT, stride, c);
     CHECK("glTexCoordPointer");
     c += 4*F;
-    glapi->glVertexPointer (4, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (4, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_T2F_C4UB_V3F:
     if (stride == 0)
       stride = 2*F + 4*B + 3*F;
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
+    compiz_glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
     CHECK("glTexCoordPointer");
     c += 2*F;
     glEnableClientState (GL_COLOR_ARRAY);
-    glapi->glColorPointer  (4, GL_UNSIGNED_BYTE, stride, c);
+    compiz_glapi->glColorPointer  (4, GL_UNSIGNED_BYTE, stride, c);
     CHECK("glColorPointer");
     c += 4*B;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_T2F_C3F_V3F:
     if (stride == 0)
       stride = 2*F + 3*F + 3*F;
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
+    compiz_glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
     CHECK("glTexCoordPointer");
     c += 2*F;
     glEnableClientState (GL_COLOR_ARRAY);
-    glapi->glColorPointer  (3, GL_FLOAT, stride, c);
+    compiz_glapi->glColorPointer  (3, GL_FLOAT, stride, c);
     CHECK("glColorPointer");
     c += 3*F;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_T2F_N3F_V3F:
     if (stride == 0)
       stride = 2*F + 3*F + 3*F;
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
+    compiz_glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
     CHECK("glTexCoordPointer");
     c += 2*F;
     glEnableClientState (GL_NORMAL_ARRAY);
-    glapi->glNormalPointer (GL_FLOAT, stride, c);
+    compiz_glapi->glNormalPointer (GL_FLOAT, stride, c);
     CHECK("glNormalPointer");
     c += 3*F;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_T2F_C4F_N3F_V3F:
     if (stride == 0)
       stride = 2*F + 4*F + 3*F + 3*F;
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
+    compiz_glapi->glTexCoordPointer (2, GL_FLOAT, stride, c);
     CHECK("glTexCoordPointer");
     c += 2*F;
     glEnableClientState (GL_COLOR_ARRAY);
-    glapi->glColorPointer  (3, GL_FLOAT, stride, c);
+    compiz_glapi->glColorPointer  (3, GL_FLOAT, stride, c);
     CHECK("glColorPointer");
     c += 3*F;
     glEnableClientState (GL_NORMAL_ARRAY);
-    glapi->glNormalPointer (GL_FLOAT, stride, c);
+    compiz_glapi->glNormalPointer (GL_FLOAT, stride, c);
     CHECK("glNormalPointer");
     c += 3*F;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   case GL_T4F_C4F_N3F_V4F:
     if (stride == 0)
       stride = 4*F + 4*F + 3*F + 4*F;
     glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-    glapi->glTexCoordPointer (4, GL_FLOAT, stride, c);
+    compiz_glapi->glTexCoordPointer (4, GL_FLOAT, stride, c);
     CHECK("glTexCoordPointer");
     c += 4*F;
     glEnableClientState (GL_COLOR_ARRAY);
-    glapi->glColorPointer  (4, GL_FLOAT, stride, c);
+    compiz_glapi->glColorPointer  (4, GL_FLOAT, stride, c);
     CHECK("glColorPointer");
     c += 4*F;
     glEnableClientState (GL_NORMAL_ARRAY);
-    glapi->glNormalPointer (GL_FLOAT, stride, c);
+    compiz_glapi->glNormalPointer (GL_FLOAT, stride, c);
     CHECK("glNormalPointer");
     c += 3*F;
-    glapi->glVertexPointer (3, GL_FLOAT, stride, c);
+    compiz_glapi->glVertexPointer (3, GL_FLOAT, stride, c);
     CHECK("glVertexPointer");
     break;
   default:
@@ -2617,7 +2617,7 @@ glEnableClientState (GLuint cap)
     {
       if (! state->replaying_list)
         LOG2 ("direct %-12s %s", "glEnableClientState", mode_desc(cap));
-      glapi->glEnableClientState (cap);  /* the real one */
+      compiz_glapi->glEnableClientState (cap);  /* the real one */
       CHECK("glEnableClientState");
     }
 
@@ -2660,7 +2660,7 @@ glDisableClientState (GLuint cap)
     {
       if (! state->replaying_list)
         LOG2 ("direct %-12s %s", "glDisableClientState", mode_desc(cap));
-      glapi->glDisableClientState (cap);  /* the real one */
+      compiz_glapi->glDisableClientState (cap);  /* the real one */
       CHECK("glDisableClientState");
     }
 
@@ -2707,7 +2707,7 @@ glMultMatrixf (const GLfloat *m)
     {
       if (! state->replaying_list)
         LOG1 ("direct %-12s", "glMultMatrixf");
-      glapi->glMultMatrixf (m);  /* the real one */
+      compiz_glapi->glMultMatrixf (m);  /* the real one */
       CHECK("glMultMatrixf");
     }
 }
@@ -2787,7 +2787,7 @@ glGenTextures (GLuint n, GLuint *ret)
           "glGenTextures not allowed inside glNewList");
   if (! state->replaying_list)
     LOG1 ("direct %-12s", "glGenTextures");
-  glapi->glGenTextures (n, ret);  /* the real one */
+  compiz_glapi->glGenTextures (n, ret);  /* the real one */
   CHECK("glGenTextures");
 }
 
@@ -2862,7 +2862,7 @@ glTexImage2D (GLenum target,
            mode_desc(target), level, mode_desc(internalFormat),
            width, height, border, mode_desc(format), mode_desc(type),
            (unsigned long) d2);
-  glapi->glTexImage2D (target, level, internalFormat, width, height, border,
+  compiz_glapi->glTexImage2D (target, level, internalFormat, width, height, border,
                 format, type, d2);  /* the real one */
   CHECK("glTexImage2D");
 
@@ -2885,7 +2885,7 @@ glTexSubImage2D (GLenum target, GLint level,
     LOG10 ("direct %-12s %s %d %d %d %d %d %s %s 0x%lX", "glTexSubImage2D", 
            mode_desc(target), level, xoffset, yoffset, width, height,
            mode_desc (format), mode_desc (type), (unsigned long) pixels);
-  glapi->glTexSubImage2D (target, level, xoffset, yoffset, width, height,
+  compiz_glapi->glTexSubImage2D (target, level, xoffset, yoffset, width, height,
                    format, type, pixels);  /* the real one */
   CHECK("glTexSubImage2D");
 }
@@ -2903,7 +2903,7 @@ glCopyTexImage2D (GLenum target, GLint level, GLenum internalformat,
     LOG9 ("direct %-12s %s %d %s %d %d %d %d %d", "glCopyTexImage2D", 
           mode_desc(target), level, mode_desc(internalformat),
           x, y, width, height, border);
-  glapi->glCopyTexImage2D (target, level, internalformat, x, y, width, height,
+  compiz_glapi->glCopyTexImage2D (target, level, internalformat, x, y, width, height,
                     border);  /* the real one */
   CHECK("glCopyTexImage2D");
 }
@@ -3062,7 +3062,7 @@ glEnable (GLuint bit)
 
       if (! state->replaying_list)
         LOG2 ("direct %-12s %s", "glEnable", mode_desc(bit));
-      glapi->glEnable (bit);  /* the real one */
+      compiz_glapi->glEnable (bit);  /* the real one */
       CHECK("glEnable");
 
       switch (bit) {
@@ -3106,7 +3106,7 @@ glDisable (GLuint bit)
 
       if (! state->replaying_list)
         LOG2 ("direct %-12s %s", "glDisable", mode_desc(bit));
-      glapi->glDisable (bit);  /* the real one */
+      compiz_glapi->glDisable (bit);  /* the real one */
       CHECK("glDisable");
 
       switch (bit) {
@@ -3181,7 +3181,7 @@ glGetFloatv (GLenum pname, GLfloat *params)
 {
   if (! state->replaying_list)
     LOG2 ("direct %-12s %s", "glGetFloatv", mode_desc(pname));
-  glapi->glGetFloatv (pname, params);  /* the real one */
+  compiz_glapi->glGetFloatv (pname, params);  /* the real one */
   CHECK("glGetFloatv");
 }
 
@@ -3192,7 +3192,7 @@ glGetPointerv (GLenum pname, GLvoid *params)
 {
   if (! state->replaying_list)
     LOG2 ("direct %-12s %s", "glGetPointerv", mode_desc(pname));
-  glapi->glGetPointerv (pname, params);  /* the real one */
+  compiz_glapi->glGetPointerv (pname, params);  /* the real one */
   CHECK("glGetPointerv");
 }
 
@@ -3306,7 +3306,7 @@ glVertexPointer (GLuint size, GLuint type, GLuint stride,
   if (! state->replaying_list)
     LOG5 ("direct %-12s %d %s %d 0x%lX", "glVertexPointer", 
           size, mode_desc(type), stride, (unsigned long) ptr);
-  glapi->glVertexPointer (size, type, stride, ptr);  /* the real one */
+  compiz_glapi->glVertexPointer (size, type, stride, ptr);  /* the real one */
   CHECK("glVertexPointer");
 }
 
@@ -3316,7 +3316,7 @@ glNormalPointer (GLuint type, GLuint stride, const GLvoid *ptr)
   if (! state->replaying_list)
     LOG4 ("direct %-12s %s %d 0x%lX", "glNormalPointer", 
           mode_desc(type), stride, (unsigned long) ptr);
-  glapi->glNormalPointer (type, stride, ptr);  /* the real one */
+  compiz_glapi->glNormalPointer (type, stride, ptr);  /* the real one */
   CHECK("glNormalPointer");
 }
 
@@ -3327,7 +3327,7 @@ glColorPointer (GLuint size, GLuint type, GLuint stride,
   if (! state->replaying_list)
     LOG5 ("direct %-12s %d %s %d 0x%lX", "glColorPointer", 
           size, mode_desc(type), stride, (unsigned long) ptr);
-  glapi->glColorPointer (size, type, stride, ptr);  /* the real one */
+  compiz_glapi->glColorPointer (size, type, stride, ptr);  /* the real one */
   CHECK("glColorPointer");
 }
 
@@ -3338,7 +3338,7 @@ glTexCoordPointer (GLuint size, GLuint type, GLuint stride,
   if (! state->replaying_list)
     LOG5 ("direct %-12s %d %s %d 0x%lX", "glTexCoordPointer", 
           size, mode_desc(type), stride, (unsigned long) ptr);
-  glapi->glTexCoordPointer (size, type, stride, ptr);  /* the real one */
+  compiz_glapi->glTexCoordPointer (size, type, stride, ptr);  /* the real one */
   CHECK("glTexCoordPointer");
 }
 
@@ -3347,7 +3347,7 @@ glBindBuffer (GLuint target, GLuint buffer)
 {
   if (! state->replaying_list)
     LOG3 ("direct %-12s %s %d", "glBindBuffer", mode_desc(target), buffer);
-  glapi->glBindBuffer (target, buffer);  /* the real one */
+  compiz_glapi->glBindBuffer (target, buffer);  /* the real one */
   CHECK("glBindBuffer");
 }
 
@@ -3358,7 +3358,7 @@ glBufferData (GLenum target, GLsizeiptr size, const void *data,
   if (! state->replaying_list)
     LOG5 ("direct %-12s %s %ld 0x%lX %s", "glBufferData",
           mode_desc(target), size, (unsigned long) data, mode_desc(usage));
-  glapi->glBufferData (target, size, data, usage);  /* the real one */
+  compiz_glapi->glBufferData (target, size, data, usage);  /* the real one */
   CHECK("glBufferData");
 }
 
@@ -3397,7 +3397,7 @@ glTexParameterf (GLuint target, GLuint pname, GLfloat param)
       if (! state->replaying_list)
         LOG4 ("direct %-12s %s %s %7.3f", "glTexParameterf", 
               mode_desc(target), mode_desc(pname), param);
-      glapi->glTexParameterf (target, pname, param);  /* the real one */
+      compiz_glapi->glTexParameterf (target, pname, param);  /* the real one */
       CHECK("glTexParameterf");
     }
 }
@@ -3431,7 +3431,7 @@ glBindTexture (GLuint target, GLuint texture)
       if (! state->replaying_list)
         LOG3 ("direct %-12s %s %d", "glBindTexture", 
               mode_desc(target), texture);
-      glapi->glBindTexture (target, texture);  /* the real one */
+      compiz_glapi->glBindTexture (target, texture);  /* the real one */
       CHECK("glBindTexture");
     }
 }
@@ -3767,7 +3767,7 @@ void jwzgles_##NAME (ARGS_##SIG)					\
     if (! state->replaying_list) {                                   	\
       WLOG (STRINGIFY(NAME), LOGS_##SIG);		        	\
     }									\
-    glapi->NAME (VARS_##SIG);							\
+    compiz_glapi->NAME (VARS_##SIG);							\
     CHECK(STRINGIFY(NAME));						\
   }									\
 }

@@ -10,6 +10,7 @@ AM_INIT_AUTOMAKE([1.8 dist-xz])
 AM_CONFIG_HEADER(config.h)
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
+AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_STDC
 
@@ -30,6 +31,7 @@ AC_PROG_LIBTOOL
 #])
 #AC_SUBST(LTLIBINTL)
 
+PKG_CHECK_MODULES([EVAS], [evas])
 PKG_CHECK_MODULES([E], [enlightenment >= 0.19.99 compiz < 0.9 libxml-2.0])
 release=$(pkg-config --variable=release enlightenment)
 MODULE_ARCH="$host_os-$host_cpu-$release"

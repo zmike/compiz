@@ -1330,7 +1330,7 @@ waitForVideoSync(CompScreen *s)
 
    if (s->getVideoSync)
      {
-        glapi->glFlush();
+        compiz_glapi->glFlush();
 
         (*s->getVideoSync)(&sync);
         (*s->waitVideoSync)(2, (sync + 1) % 2, &sync);
@@ -1361,7 +1361,7 @@ paintScreen(CompScreen *s,
             s->lastViewport.width != r.width ||
             s->lastViewport.height != r.height)
           {
-             glapi->glViewport(r.x, r.y, r.width, r.height);
+             compiz_glapi->glViewport(r.x, r.y, r.width, r.height);
              s->lastViewport = r;
           }
 
@@ -1661,7 +1661,7 @@ eventLoop(void)
                        if (s->clearBuffers)
                          {
                             if (mask & COMP_SCREEN_DAMAGE_ALL_MASK)
-                              glapi->glClear(GL_COLOR_BUFFER_BIT);
+                              compiz_glapi->glClear(GL_COLOR_BUFFER_BIT);
                          }
 
                        if (s->opt[COMP_SCREEN_OPTION_FORCE_INDEPENDENT].value.b
@@ -1714,7 +1714,7 @@ eventLoop(void)
                                    {
                                       y = s->height - pBox->y2;
 
-                                      glapi->glBitmap(0, 0, 0, 0,
+                                      compiz_glapi->glBitmap(0, 0, 0, 0,
                                                       pBox->x1 - s->rasterX,
                                                       y - s->rasterY,
                                                       NULL);
@@ -1722,11 +1722,11 @@ eventLoop(void)
                                       s->rasterX = pBox->x1;
                                       s->rasterY = y;
 
-                                      glapi->glScissor(pBox->x1, y,
+                                      compiz_glapi->glScissor(pBox->x1, y,
                                                        pBox->x2 - pBox->x1,
                                                        pBox->y2 - pBox->y1);
 
-                                      glapi->glCopyPixels(pBox->x1, y,
+                                      compiz_glapi->glCopyPixels(pBox->x1, y,
                                                           pBox->x2 - pBox->x1,
                                                           pBox->y2 - pBox->y1,
                                                           GL_COLOR);

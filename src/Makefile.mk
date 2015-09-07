@@ -14,7 +14,7 @@ AM_CPPFLAGS = -I. \
 
 
 pkgdir = $(module_dir)/$(PACKAGE)/$(MODULE_ARCH)
-pkg_LTLIBRARIES = src/module.la
+pkg_LTLIBRARIES = src/module.la src/libcompiz.la
 src_module_la_SOURCES = \
 src/e_mod_main.h \
 src/e_mod_main.c \
@@ -28,5 +28,9 @@ src_module_la_LIBADD = @E_LIBS@
 src_module_la_LDFLAGS = -module -avoid-version
 src_module_la_DEPENDENCIES = $(top_builddir)/config.h
 
-clean-local:
-	rm -rf *~
+src_libcompiz_la_SOURCES = \
+src/compiz_gl.c
+
+src_libcompiz_la_CPPFLAGS = @EVAS_CFLAGS@
+src_libcompiz_la_LIBADD = @EVAS_LIBS@ -ldl
+src_libcompiz_la_DEPENDENCIES = $(top_builddir)/config.h

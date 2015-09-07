@@ -38,9 +38,11 @@ E_API int pointerY = 0;
 E_API int lastPointerX = 0;
 E_API int lastPointerY = 0;
 
-EINTERN Evas_Object *glview = NULL;
+static Evas_GL_Config *glcfg;
+static Evas_GL_Surface *glsfc;
+EINTERN Evas_GL_Context *glctx = NULL;
 EINTERN Evas_GL *gl = NULL;
-EINTERN Evas_GL_API *glapi = NULL;
+E_API Evas_GL_API *compiz_glapi = NULL;
 
 EINTERN int compiz_main(void);
 EINTERN void compiz_fini(void);
@@ -53,7 +55,9 @@ static int resizegrab;
 
 static int ecx, ecy;
 
-#define GLERR do { on_error(glapi, __FUNCTION__, __LINE__); } while (0)
+static Ecore_Job *event_job;
+
+#define GLERR do { on_error(compiz_glapi, __FUNCTION__, __LINE__); } while (0)
 
 static void
 on_error(Evas_GL_API *api, const char *func, int line)
@@ -65,6 +69,40 @@ on_error(Evas_GL_API *api, const char *func, int line)
         abort();
      }
    return;
+}
+
+static void
+compiz_idle_cb(void *data EINA_UNUSED)
+{
+   struct timeval tv;
+
+   while (eina_array_count(events))
+     {
+        XEvent *ev;
+
+        ev = eina_array_pop(events);
+        if (ev->type == CreateNotify)
+          {
+             E_Client *ec;
+
+             ec = e_pixmap_find_client(E_PIXMAP_TYPE_X, ev->xcreatewindow.window);
+             if (!ec)
+               ec = e_pixmap_find_client(E_PIXMAP_TYPE_WL, ev->xcreatewindow.window);
+             handleAddClient(ec);
+          }
+        handleDisplayEvent(ecore_x_display_get(), ev);
+        free(ev);
+     }
+   gettimeofday (&tv, 0);
+   handleTimeouts(&tv);
+}
+
+static void
+compiz_job(XEvent *event)
+{
+   eina_array_push(events, event);
+   if (!event_job)
+     ecore_job_add(compiz_idle_cb, NULL);
 }
 
 static void
@@ -85,7 +123,7 @@ createnotify(const E_Client *ec)
    event->xcreatewindow.width = ec->client.w;
    event->xcreatewindow.height = ec->client.h;
    event->xcreatewindow.override_redirect = ec->override;
-   eina_array_push(events, event);
+   compiz_job(event);
 }
 
 static void
@@ -134,7 +172,7 @@ compiz_client_configure(void *d EINA_UNUSED, int t EINA_UNUSED, E_Event_Client *
    if (bec)
      event->xconfigure.above = window_get(bec);
    event->xconfigure.override_redirect = ev->ec->override;
-   eina_array_push(events, event);
+   compiz_job(event);
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -148,7 +186,7 @@ compiz_client_show(void *d EINA_UNUSED, int t EINA_UNUSED, E_Event_Client *ev)
    event->xmap.display = ecore_x_display_get();
    event->xmap.event = event->xmap.window = window_get(ev->ec);
    event->xmap.override_redirect = ev->ec->override;
-   eina_array_push(events, event);
+   compiz_job(event);
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -161,14 +199,8 @@ compiz_client_hide(void *d EINA_UNUSED, int t EINA_UNUSED, E_Event_Client *ev)
    event->type = UnmapNotify;
    event->xunmap.display = ecore_x_display_get();
    event->xunmap.event = event->xunmap.window = window_get(ev->ec);
-   eina_array_push(events, event);
+   compiz_job(event);
    return ECORE_CALLBACK_RENEW;
-}
-
-static void
-compiz_render_pre()
-{
-   elm_glview_changed_set(glview);
 }
 
 EINTERN unsigned int
@@ -288,8 +320,7 @@ compiz_client_damage(void *data, Evas_Object *obj, void *event_info)
    de->geometry.y = ec->client.y;
    de->geometry.width = ec->client.w;
    de->geometry.height = ec->client.h;
-   eina_array_push(events, event);
-   elm_glview_changed_set(glview);
+   compiz_job(event);
 }
 
 static void
@@ -344,11 +375,11 @@ compiz_texture_init(CompTexture *texture)
    GLuint fbo;
 
    if (eina_hash_find(textures, &texture)) return;
-   glapi->glGenFramebuffers(1, &fbo);
-   glapi->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-   glapi->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture->name, 0);
+   compiz_glapi->glGenFramebuffers(1, &fbo);
+   compiz_glapi->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+   compiz_glapi->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture->name, 0);
    eina_hash_add(textures, &texture, (uintptr_t*)fbo);
-   glapi->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+   compiz_glapi->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 EINTERN void
@@ -357,7 +388,7 @@ compiz_texture_del(CompTexture *texture)
    GLuint fbo;
 
    fbo = (uintptr_t)eina_hash_set(textures, &texture, NULL);
-   glapi->glDeleteFramebuffers(1, &fbo);
+   compiz_glapi->glDeleteFramebuffers(1, &fbo);
 }
 
 static Eina_Bool
@@ -382,32 +413,27 @@ compiz_mouse_move(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Event_Mous
    event->xmotion.x_root = ev->root.x;
    event->xmotion.y_root = ev->root.y;
    event->xmotion.same_screen = ev->same_screen;
-   eina_array_push(events, event);
+   compiz_job(event);
    return ECORE_CALLBACK_RENEW;
 }
 
 static void
-compiz_gl_render(Evas_Object *obj)
+compiz_gl_init()
 {
-   fprintf(stderr, "COMPIZ LOOP\n");
-   eventLoop();
-   GLERR;
-}
-
-static void
-compiz_gl_init(Evas_Object *obj)
-{
-   gl = elm_glview_evas_gl_get(obj);
-   glapi = evas_gl_api_get(gl);
+   glsfc = evas_gl_surface_create(gl, glcfg, e_comp->w, e_comp->h);
+   compiz_glapi = evas_gl_api_get(gl);
 #define GLFN(FN) \
-   if (!glapi->FN) \
-     glapi->FN = evas_gl_proc_address_get(gl, #FN)
+   if (!compiz_glapi->FN) \
+     compiz_glapi->FN = evas_gl_proc_address_get(gl, #FN)
    GLFN(glLightModelfv);
    GLFN(glLightfv);
    GLFN(glNormal3f);
    GLFN(glPushMatrix);
    GLFN(glPopMatrix);
+   GLFN(glMatrixMode);
    GLFN(glLoadMatrixf);
+   GLFN(glLoadIdentity);
+   GLFN(glMultMatrixf);
    GLFN(glTexEnvi);
    GLFN(glColor4f);
    GLFN(glVertexPointer);
@@ -416,7 +442,20 @@ compiz_gl_init(Evas_Object *obj)
    GLFN(glTexCoordPointer);
 #undef GLFN   
    assert(!compiz_main());
-   elm_glview_init_func_set(glview, NULL);
+}
+
+static void
+compiz_gl_render(void)
+{
+   struct timeval tv;
+   evas_gl_make_current(gl, glsfc, glctx);
+   if (!compiz_glapi)
+     compiz_gl_init();
+   gettimeofday (&tv, 0);
+   handleTimeouts(&tv);
+   fprintf(stderr, "COMPIZ LOOP\n");
+   eventLoop();
+   //GLERR;
 }
 
 static void
@@ -481,36 +520,16 @@ compiz_move_end(void *d EINA_UNUSED, E_Client *ec)
    w->screen->windowUngrabNotify(w);
 }
 
-static Eina_Bool
-compiz_idle_cb(void *data EINA_UNUSED)
-{
-   struct timeval tv;
-
-   while (eina_array_count(events))
-     {
-        XEvent *ev;
-
-        ev = eina_array_pop(events);
-        if (ev->type == CreateNotify)
-          {
-             E_Client *ec;
-
-             ec = e_pixmap_find_client(E_PIXMAP_TYPE_X, ev->xcreatewindow.window);
-             if (!ec)
-               ec = e_pixmap_find_client(E_PIXMAP_TYPE_WL, ev->xcreatewindow.window);
-             handleAddClient(ec);
-          }
-        handleDisplayEvent(ecore_x_display_get(), ev);
-        free(ev);
-     }
-   gettimeofday (&tv, 0);
-   handleTimeouts(&tv);
-   return EINA_TRUE;
-}
-
 EINTERN void
 compiz_init(void)
 {
+   glcfg = evas_gl_config_new();
+   glcfg->color_format = EVAS_GL_RGB_888;
+   glcfg->gles_version = EVAS_GL_GLES_2_X;
+   glcfg->depth_bits = EVAS_GL_DEPTH_BIT_24;
+   glcfg->stencil_bits = EVAS_GL_STENCIL_BIT_8;
+   gl = evas_gl_new(e_comp->evas);
+   glctx = evas_gl_context_create(gl, NULL);
    wins = eina_hash_pointer_new((Eina_Free_Cb)win_hash_free);
    clients = eina_hash_pointer_new(NULL);
    textures = eina_hash_pointer_new(NULL);
@@ -527,25 +546,26 @@ compiz_init(void)
    hooks = eina_list_append(hooks, e_client_hook_add(E_CLIENT_HOOK_MOVE_END, compiz_move_end, NULL));
    hooks = eina_list_append(hooks, e_client_hook_add(E_CLIENT_HOOK_RESIZE_BEGIN, compiz_resize_begin, NULL));
    hooks = eina_list_append(hooks, e_client_hook_add(E_CLIENT_HOOK_RESIZE_END, compiz_resize_end, NULL));
-   glview = elm_glview_version_add(e_comp->elm, EVAS_GL_GLES_2_X);
-   elm_glview_mode_set(glview, ELM_GLVIEW_DEPTH | ELM_GLVIEW_STENCIL /*| ELM_GLVIEW_DIRECT */);
-   elm_glview_render_policy_set(glview, ELM_GLVIEW_RENDER_POLICY_ALWAYS);
-   elm_glview_init_func_set(glview, compiz_gl_init);
-   elm_glview_render_func_set(glview, compiz_gl_render);
-   elm_glview_size_set(glview, e_comp->w, e_comp->h);
-   elm_glview_changed_set(glview);
    events = eina_array_new(1);
-   compiz_idle = ecore_idle_enterer_add(compiz_idle_cb, NULL);
+   e_comp->pre_render_cbs = eina_list_append(e_comp->pre_render_cbs, compiz_gl_render);
 }
 
 EINTERN void
 compiz_shutdown(void)
 {
-   eina_hash_free(wins);
-   eina_hash_free(clients);
-   eina_hash_free(textures);
    E_FREE_LIST(handlers, ecore_event_handler_del);
    E_FREE_LIST(hooks, e_client_hook_del);
    E_FREE_FUNC(compiz_idle, ecore_idle_enterer_del);
    compiz_fini();
+   evas_gl_surface_destroy(gl, glsfc);
+   evas_gl_context_destroy(gl, glctx);
+   glctx = NULL;
+   glsfc = NULL;
+   E_FREE_FUNC(gl, evas_gl_free);
+   E_FREE_FUNC(glcfg, evas_gl_config_free);
+   e_comp->pre_render_cbs = eina_list_remove(e_comp->pre_render_cbs, compiz_gl_render);
+   E_FREE_FUNC(event_job, ecore_job_del);
+   eina_hash_free(wins);
+   eina_hash_free(clients);
+   eina_hash_free(textures);
 }

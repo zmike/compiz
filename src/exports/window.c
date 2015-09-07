@@ -1556,6 +1556,8 @@ addWindowDamageRect(CompWindow *w,
 
    if (!(*w->screen->damageWindowRect)(w, FALSE, &region.extents))
      {
+        E_Client *ec;
+
         region.extents.x1 += w->attrib.x + w->attrib.border_width;
         region.extents.y1 += w->attrib.y + w->attrib.border_width;
         region.extents.x2 += w->attrib.x + w->attrib.border_width;
@@ -1563,7 +1565,9 @@ addWindowDamageRect(CompWindow *w,
 
         region.rects = &region.extents;
         region.numRects = region.size = 1;
-
+        ec = compiz_win_to_client(w);
+        e_comp_object_damage(ec->frame, region.extents.x1, region.extents.y1, region.extents.x2, region.extents.y2);
+        e_comp_object_render_update_del(ec->frame);
         damageScreenRegion(w->screen, &region);
      }
 }
@@ -2194,7 +2198,8 @@ addWindow(CompScreen *screen,
    if (w->type & CompWindowTypeDesktopMask)
      w->paint.opacity = OPAQUE;
    else
-     w->paint.opacity = compiz_win_to_client(w)->netwm.opacity;
+     w->paint.opacity = getWindowProp32 (d, w->id,
+                                            d->winOpacityAtom, OPAQUE);
 
    w->paint.brightness = getWindowProp32(d, w->id,
                                          d->winBrightnessAtom, BRIGHT);

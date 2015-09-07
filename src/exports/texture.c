@@ -60,7 +60,7 @@ finiTexture(CompScreen *screen,
      {
         makeScreenCurrent(screen);
         releasePixmapFromTexture(screen, texture);
-        glapi->glDeleteTextures(1, &texture->name);
+        compiz_glapi->glDeleteTextures(1, &texture->name);
         compiz_texture_del(texture);
      }
 }
@@ -136,29 +136,29 @@ imageToTexture(CompScreen *screen,
      }
 
    if (!texture->name)
-     glapi->glGenTextures(1, &texture->name);
+     compiz_glapi->glGenTextures(1, &texture->name);
 
-   glapi->glBindTexture(texture->target, texture->name);
+   compiz_glapi->glBindTexture(texture->target, texture->name);
 
    internalFormat =
      (screen->opt[COMP_SCREEN_OPTION_TEXTURE_COMPRESSION].value.b &&
       screen->textureCompression ?
       GL_COMPRESSED_RGBA_ARB : GL_RGBA);
 
-   glapi->glTexImage2D(texture->target, 0, internalFormat, width, height, 0,
+   compiz_glapi->glTexImage2D(texture->target, 0, internalFormat, width, height, 0,
                        format, type, data);
 
    texture->filter = GL_NEAREST;
 
-   glapi->glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glapi->glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-   glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-   glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+   compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+   compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
    texture->wrap = GL_CLAMP_TO_EDGE;
 
-   glapi->glBindTexture(texture->target, 0);
+   compiz_glapi->glBindTexture(texture->target, 0);
 
    free(data);
 
@@ -349,9 +349,9 @@ bindPixmapToTexture(CompScreen *screen,
      }
 
    if (!texture->name)
-     glapi->glGenTextures(1, &texture->name);
+     compiz_glapi->glGenTextures(1, &texture->name);
 
-   glapi->glBindTexture(texture->target, texture->name);
+   compiz_glapi->glBindTexture(texture->target, texture->name);
 
    if (!strictBinding)
      {
@@ -363,17 +363,17 @@ bindPixmapToTexture(CompScreen *screen,
 
    texture->filter = GL_NEAREST;
 
-   glapi->glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glapi->glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-   glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-   glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+   compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+   compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
    texture->wrap = GL_CLAMP_TO_EDGE;
 
    compiz_texture_init(texture);
 
-   glapi->glBindTexture(texture->target, 0);
+   compiz_glapi->glBindTexture(texture->target, 0);
 
    return TRUE;
 }
@@ -385,18 +385,18 @@ releasePixmapFromTexture(CompScreen *screen,
    if (texture->pixmap)
      {
         makeScreenCurrent(screen);
-        glapi->glEnable(texture->target);
+        compiz_glapi->glEnable(texture->target);
         if (!strictBinding)
           {
-             glapi->glBindTexture(texture->target, texture->name);
+             compiz_glapi->glBindTexture(texture->target, texture->name);
 
              (*screen->releaseTexImage)(screen->display->display,
                                         texture->pixmap,
                                         GLX_FRONT_LEFT_EXT);
           }
 
-        glapi->glBindTexture(texture->target, 0);
-        glapi->glDisable(texture->target);
+        compiz_glapi->glBindTexture(texture->target, 0);
+        compiz_glapi->glDisable(texture->target);
 
         (*screen->destroyPixmap)(screen->display->display, texture->pixmap);
 
@@ -410,8 +410,8 @@ enableTexture(CompScreen *screen,
               CompTextureFilter filter)
 {
    makeScreenCurrent(screen);
-   glapi->glEnable(texture->target);
-   glapi->glBindTexture(texture->target, texture->name);
+   compiz_glapi->glEnable(texture->target);
+   compiz_glapi->glBindTexture(texture->target, texture->name);
 
    if (strictBinding && texture->pixmap)
      {
@@ -425,10 +425,10 @@ enableTexture(CompScreen *screen,
      {
         if (texture->filter != GL_NEAREST)
           {
-             glapi->glTexParameteri(texture->target,
+             compiz_glapi->glTexParameteri(texture->target,
                                     GL_TEXTURE_MIN_FILTER,
                                     GL_NEAREST);
-             glapi->glTexParameteri(texture->target,
+             compiz_glapi->glTexParameteri(texture->target,
                                     GL_TEXTURE_MAG_FILTER,
                                     GL_NEAREST);
 
@@ -441,12 +441,12 @@ enableTexture(CompScreen *screen,
           {
              if (screen->textureNonPowerOfTwo && screen->fbo && texture->mipmap)
                {
-                  glapi->glTexParameteri(texture->target,
+                  compiz_glapi->glTexParameteri(texture->target,
                                          GL_TEXTURE_MIN_FILTER,
                                          GL_LINEAR_MIPMAP_LINEAR);
 
                   if (texture->filter != GL_LINEAR)
-                    glapi->glTexParameteri(texture->target,
+                    compiz_glapi->glTexParameteri(texture->target,
                                            GL_TEXTURE_MAG_FILTER,
                                            GL_LINEAR);
 
@@ -454,10 +454,10 @@ enableTexture(CompScreen *screen,
                }
              else if (texture->filter != GL_LINEAR)
                {
-                  glapi->glTexParameteri(texture->target,
+                  compiz_glapi->glTexParameteri(texture->target,
                                          GL_TEXTURE_MIN_FILTER,
                                          GL_LINEAR);
-                  glapi->glTexParameteri(texture->target,
+                  compiz_glapi->glTexParameteri(texture->target,
                                          GL_TEXTURE_MAG_FILTER,
                                          GL_LINEAR);
 
@@ -466,10 +466,10 @@ enableTexture(CompScreen *screen,
           }
         else
           {
-             glapi->glTexParameteri(texture->target,
+             compiz_glapi->glTexParameteri(texture->target,
                                     GL_TEXTURE_MIN_FILTER,
                                     screen->display->textureFilter);
-             glapi->glTexParameteri(texture->target,
+             compiz_glapi->glTexParameteri(texture->target,
                                     GL_TEXTURE_MAG_FILTER,
                                     screen->display->textureFilter);
 
@@ -494,14 +494,14 @@ disableTexture(CompScreen *screen,
    makeScreenCurrent(screen);
    if (strictBinding && texture->pixmap)
      {
-        glapi->glBindTexture(texture->target, texture->name);
+        compiz_glapi->glBindTexture(texture->target, texture->name);
 
         (*screen->releaseTexImage)(screen->display->display,
                                    texture->pixmap,
                                    GLX_FRONT_LEFT_EXT);
      }
 
-   glapi->glBindTexture(texture->target, 0);
-   glapi->glDisable(texture->target);
+   compiz_glapi->glBindTexture(texture->target, 0);
+   compiz_glapi->glDisable(texture->target);
 }
 

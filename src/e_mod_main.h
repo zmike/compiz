@@ -308,8 +308,7 @@ typedef struct Config
 extern Mod *compiz_mod;
 extern Config *compiz_config;
 extern Evas_GL *gl;
-extern Evas_GL_API *glapi;
-extern Evas_Object *glview;
+extern Evas_GL_API *compiz_glapi;
 
 
 EINTERN void compiz_init(void);

@@ -974,22 +974,22 @@ reshape(CompScreen *s,
    //d->screenInfo = XineramaQueryScreens (d->display, &d->nScreenInfo);
    //}
 
-   //glMatrixMode (GL_PROJECTION);
-   //glLoadIdentity ();
-   //glMatrixMode (GL_MODELVIEW);
-   //glLoadIdentity ();
-   //glDepthRange (0, 1);
-   //glViewport (-1, -1, 2, 2);
-   //glRasterPos2f (0, 0);
+   compiz_glapi->glMatrixMode (GL_PROJECTION);
+   compiz_glapi->glLoadIdentity ();
+   compiz_glapi->glMatrixMode (GL_MODELVIEW);
+   compiz_glapi->glLoadIdentity ();
+   //compiz_glapi->glDepthRange (0, 1);
+   compiz_glapi->glViewport (-1, -1, 2, 2);
+   //compiz_glapi->glRasterPos2f (0, 0);
 
    s->rasterX = s->rasterY = 0;
 
-   //perspective (s->projection, 60.0f, 1.0f, 0.1f, 100.0f);
+   perspective (s->projection, 60.0f, 1.0f, 0.1f, 100.0f);
 
-   //glMatrixMode (GL_PROJECTION);
-   //glLoadIdentity ();
-   //glMultMatrixf (s->projection);
-   //glMatrixMode (GL_MODELVIEW);
+   compiz_glapi->glMatrixMode (GL_PROJECTION);
+   compiz_glapi->glLoadIdentity ();
+   compiz_glapi->glMultMatrixf (s->projection);
+   compiz_glapi->glMatrixMode (GL_MODELVIEW);
 
    s->region.rects = &s->region.extents;
    s->region.numRects = 1;
@@ -1139,10 +1139,10 @@ updateScreenBackground(CompScreen *screen,
 
    if (texture->target == GL_TEXTURE_2D)
      {
-        glapi->glBindTexture(texture->target, texture->name);
-        glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glapi->glBindTexture(texture->target, 0);
+        compiz_glapi->glBindTexture(texture->target, texture->name);
+        compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        compiz_glapi->glTexParameteri(texture->target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        compiz_glapi->glBindTexture(texture->target, 0);
      }
 }
 
@@ -2080,7 +2080,7 @@ addScreen(CompDisplay *display,
    if (strstr(glExtensions, "texture_npot"))
      s->textureNonPowerOfTwo = 1;
 
-   glapi->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &s->maxTextureSize);
+   compiz_glapi->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &s->maxTextureSize);
 
    s->textureRectangle = 0;
    if (strstr(glExtensions, "GL_NV_texture_rectangle") ||
@@ -2093,7 +2093,7 @@ addScreen(CompDisplay *display,
         //{
         //GLint maxTextureSize;
 
-        //glapi->glGetIntegerv (GL_MAX_RECTANGLE_TEXTURE_SIZE_NV, &maxTextureSize);
+        //compiz_glapi->glGetIntegerv (GL_MAX_RECTANGLE_TEXTURE_SIZE_NV, &maxTextureSize);
         //if (maxTextureSize > s->maxTextureSize)
         //s->maxTextureSize = maxTextureSize;
         //}
@@ -2138,7 +2138,7 @@ addScreen(CompDisplay *display,
           getProcAddress(s, "glMultiTexCoord2f");
 
         //if (s->activeTexture && s->clientActiveTexture && s->multiTexCoord2f)
-        //glapi->glGetIntegerv (GL_MAX_TEXTURE_UNITS_ARB, &s->maxTextureUnits);
+        //compiz_glapi->glGetIntegerv (GL_MAX_TEXTURE_UNITS_ARB, &s->maxTextureUnits);
      }
 
    s->genPrograms = NULL;
@@ -2395,16 +2395,16 @@ addScreen(CompDisplay *display,
    detectOutputDevices(s);
    updateOutputDevices(s);
 
-   glapi->glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmbient);
+   compiz_glapi->glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmbient);
 
-   glapi->glEnable(GL_LIGHT0);
-   glapi->glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
-   glapi->glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
-   glapi->glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
+   compiz_glapi->glEnable(GL_LIGHT0);
+   compiz_glapi->glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
+   compiz_glapi->glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
+   compiz_glapi->glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
 
-   //glapi->glColorMaterial (GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+   //compiz_glapi->glColorMaterial (GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 
-   glapi->glNormal3f(0.0f, 0.0f, -1.0f);
+   compiz_glapi->glNormal3f(0.0f, 0.0f, -1.0f);
 
    s->lighting = FALSE;
    s->slowAnimations = FALSE;
@@ -2557,7 +2557,6 @@ damageScreenRegion(CompScreen *screen,
    XUnionRegion(screen->damage, region, screen->damage);
 
    screen->damageMask |= COMP_SCREEN_DAMAGE_REGION_MASK;
-   elm_glview_changed_set(glview);
 
    /* if the number of damage rectangles grows two much between repaints,
       we have a lot of overhead just for doing the damage tracking -
@@ -2572,14 +2571,12 @@ damageScreen(CompScreen *s)
 {
    s->damageMask |= COMP_SCREEN_DAMAGE_ALL_MASK;
    s->damageMask &= ~COMP_SCREEN_DAMAGE_REGION_MASK;
-   elm_glview_changed_set(glview);
 }
 
 void
 damagePendingOnScreen(CompScreen *s)
 {
    s->damageMask |= COMP_SCREEN_DAMAGE_PENDING_MASK;
-   elm_glview_changed_set(glview);
 }
 
 void
@@ -3930,9 +3927,9 @@ screenTexEnvMode(CompScreen *s,
                  GLenum mode)
 {
    if (s->lighting)
-     glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+     compiz_glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
    else
-     glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode);
+     compiz_glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode);
 }
 
 void
@@ -3946,13 +3943,13 @@ screenLighting(CompScreen *s,
 
         if (lighting)
           {
-             glapi->glEnable(GL_COLOR_MATERIAL);
-             glapi->glEnable(GL_LIGHTING);
+             compiz_glapi->glEnable(GL_COLOR_MATERIAL);
+             compiz_glapi->glEnable(GL_LIGHTING);
           }
         else
           {
-             glapi->glDisable(GL_COLOR_MATERIAL);
-             glapi->glDisable(GL_LIGHTING);
+             compiz_glapi->glDisable(GL_COLOR_MATERIAL);
+             compiz_glapi->glDisable(GL_LIGHTING);
           }
 
         s->lighting = lighting;
@@ -4012,7 +4009,7 @@ finishScreenDrawing(CompScreen *s)
    if (s->pendingCommands)
      {
         makeScreenCurrent(s);
-        glapi->glFinish ();
+        compiz_glapi->glFinish ();
 
         s->pendingCommands = FALSE;
      }
@@ -4125,7 +4122,7 @@ setDefaultViewport(CompScreen *s)
    s->lastViewport.width = s->outputDev->width;
    s->lastViewport.height = s->outputDev->height;
 
-   glapi->glViewport(s->lastViewport.x,
+   compiz_glapi->glViewport(s->lastViewport.x,
                      s->lastViewport.y,
                      s->lastViewport.width,
                      s->lastViewport.height);
@@ -4150,24 +4147,24 @@ clearScreenOutput(CompScreen *s,
      {
         GLboolean sct;
         GLint scbox[4];
-        glapi->glGetBooleanv(GL_SCISSOR_TEST, &sct);
-        glapi->glGetIntegerv(GL_SCISSOR_BOX, scbox);
-        //glapi->glPushAttrib (GL_SCISSOR_BIT);
+        compiz_glapi->glGetBooleanv(GL_SCISSOR_TEST, &sct);
+        compiz_glapi->glGetIntegerv(GL_SCISSOR_BOX, scbox);
+        //compiz_glapi->glPushAttrib (GL_SCISSOR_BIT);
 
-        glapi->glEnable(GL_SCISSOR_TEST);
-        glapi->glScissor(pBox->x1,
+        compiz_glapi->glEnable(GL_SCISSOR_TEST);
+        compiz_glapi->glScissor(pBox->x1,
                          s->height - pBox->y2,
                          pBox->x2 - pBox->x1,
                          pBox->y2 - pBox->y1);
-        glapi->glClear(mask);
+        compiz_glapi->glClear(mask);
 
         if (!sct)
-          glapi->glDisable(GL_SCISSOR_TEST);
-        glapi->glScissor(scbox[0], scbox[1], scbox[2], scbox[3]);
+          compiz_glapi->glDisable(GL_SCISSOR_TEST);
+        compiz_glapi->glScissor(scbox[0], scbox[1], scbox[2], scbox[3]);
      }
    else
      {
-        glapi->glClear(mask);
+        compiz_glapi->glClear(mask);
      }
 }
 
