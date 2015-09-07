@@ -1,0 +1,8 @@
+Release 1.0.1
+--------------------
+
+Mike Blumenkrantz (3):
+      raise client zoom obj on mouse in
+      fix input regions on shaded clients after desk flip
+      fix multiscreen zoom and current desks zoom
+

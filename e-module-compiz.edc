@@ -1,0 +1,508 @@
+collections {
+   group { name: "icon";
+      images.image: "epic-e-256.png" COMP;
+      parts {
+         part { name: "icon"; mouse_events: 0;
+            description { state: "default";
+               aspect_preference: BOTH;
+               image.normal: "epic-e-256.png";
+            }
+         }
+      }
+   }
+   group { name: "e/modules/desksanity/moveresize";
+      parts {
+         part { name: "outline"; type: TEXT; mouse_events: 0;
+            effect: OUTLINE;
+            scale: 1;
+            description { state: "default" 0.0;
+               rel1.to: "e.text";
+               rel1.offset: -1 -1;
+               rel2.to: "e.text";
+               color: 0 0 0 255;
+               color2: 0 0 0 255;
+               color3: 0 0 0 255;
+               text { font: "Sans"; size: 16;
+                  text_source: "e.text";
+                  min: 1 1;
+                  ellipsis: -1;
+               }
+            }
+         }
+         part { name: "e.text"; type: TEXT; mouse_events: 0;
+            effect: GLOW;
+            scale: 1;
+            description { state: "default" 0.0;
+               color: 51 153 255 255;
+               color2: 51 153 255 24;
+               color3: 51 153 255 18;
+               text { font: "Sans"; size: 16;
+                  min: 1 1;
+                  ellipsis: -1;
+               }
+            }
+         }
+      }
+   }
+   group { name: "e/modules/desksanity/zoom/base"; program_source: "e";
+      parts {
+         rect { "drag_clip"; nomouse;
+            desc { hid; }
+            desc { "vis";
+               link.base: "e,state,dragging";
+            }
+         }
+         rect { "zoomt"; clip: "drag_clip"; nomouse;
+            desc {
+               min: 0 4;
+               max: -1 4;
+               fixed: 1 1;
+               rel2.relative: 1 0;
+               color: 51 153 255 0;
+               hid;
+            }
+            desc { "enable"; inherit: "default";
+               color: 51 153 255 200;
+               vis;
+            }
+            desc { "anim"; inherit: "enable";
+               rel1.relative: 0.5 0.5;
+               rel2.relative: 0.5 0.5;
+            }
+         }
+         rect { "zooml"; clip: "drag_clip"; nomouse;
+            desc {
+               min: 4 0;
+               max: 4 -1;
+               fixed: 1 1;
+               rel2.relative: 0 1;
+               color: 51 153 255 0;
+               hid;
+            }
+            desc { "enable"; inherit: "default";
+               color: 51 153 255 200;
+               vis;
+            }
+            desc { "anim"; inherit: "enable";
+               rel1.relative: 0.5 0.5;
+               rel2.relative: 0.5 0.5;
+            }
+         }
+         rect { "zoomr"; clip: "drag_clip"; nomouse;
+            desc {
+               min: 4 0;
+               max: 4 -1;
+               fixed: 1 1;
+               rel1.relative: 1 0;
+               color: 51 153 255 0;
+               hid;
+            }
+            desc { "enable"; inherit: "default";
+               color: 51 153 255 200;
+               vis;
+            }
+            desc { "anim"; inherit: "enable";
+               rel1.relative: 0.5 0.5;
+               rel2.relative: 0.5 0.5;
+            }
+         }
+         rect { "zoomb"; clip: "drag_clip"; nomouse;
+            desc {
+               min: 0 4;
+               max: -1 4;
+               fixed: 1 1;
+               rel1.relative: 0 1;
+               color: 51 153 255 0;
+               hid;
+            }
+            desc { "enable"; inherit: "default";
+               color: 51 153 255 200;
+               vis;
+            }
+            desc { "anim"; inherit: "enable";
+               rel1.relative: 0.5 0.5;
+               rel2.relative: 0.5 0.5;
+            }
+         }
+         program { signal: "e,state,current";
+            after: "drag_start";
+         }
+         program { "drag_start"; filter: "drag_clip" "vis";
+            signal: "mouse,in"; source: "events";
+            action: STATE_SET "enable";
+            transition: LINEAR 0.1;
+            targets: "zoomt" "zooml" "zoomr" "zoomb";
+            after: "drag_anim";
+         }
+         program { filter: "drag_clip" "vis";
+            signal: "mouse,out"; source: "events";
+            action: STATE_SET "default";
+            transition: ACCEL 0.1;
+            targets: "zoomt" "zooml" "zoomr" "zoomb";
+         }
+         program { "drag_anim";
+            action: STATE_SET "anim";
+            transition: ACCEL 0.8;
+            targets: "zoomt" "zooml" "zoomr" "zoomb";
+            after: "drag_anim2";
+         }
+         program { "drag_anim2";
+            action: STATE_SET "default";
+            targets: "zoomt" "zooml" "zoomr" "zoomb";
+            after: "drag_anim";
+         }
+         swallow { "e.swallow.background"; clip: "clip";
+         }
+         rect { "fader";
+            desc {
+               color: 0 0 0 0;
+               link.base: "e,state,dragging";
+               link.transition: LINEAR 0.3;
+               link.base: "e,state,inactive";
+               link.transition: LINEAR 0.3;
+               link.after: "fade_post";
+            }
+            desc { "fade";
+               color: 0 0 0 192;
+               link.base: "e,state,active";
+               link.transition: LINEAR 0.3;
+            }
+            program { "fade_post";
+               action: SIGNAL_EMIT "e,action,done" "e";
+            }
+         }
+         rect { "clip";
+            desc { hid; color: 255 255 255 0;
+               link.base: "e,state,dragging";
+               link.transition: LINEAR 0.3;
+               link.base: "e,state,inactive";
+               link.transition: LINEAR 0.3;
+            }
+            desc { "active";
+               link.base: "e,state,active";
+               link.transition: LINEAR 0.3;
+            }
+         }
+         swallow { "e.swallow.layout"; clip: "clip"; }
+         program { signal: "e,state,inactive";
+            action: SIGNAL_EMIT "e,state,hiding" "e";
+         }
+         rect { "events"; repeat;
+            desc { color: 0 0 0 0; }
+         }
+      }
+   }
+   group { name: "e/modules/desksanity/zoom/scrollframe";
+      parts {
+         rect { "clipper"; nomouse;
+            desc {
+               rel1.to: "elm.swallow.content";
+               rel2.to: "elm.swallow.content";
+            }
+         }
+         swallow { "elm.swallow.content";
+            clip: "clipper";
+         }
+      }
+   }
+   group { name: "e/modules/desksanity/zoom/client"; nomouse;
+      images.image: "win_shadow.png" COMP;
+      script {
+         public message(Msg_Type:type, id, ...) {
+            if (type == MSG_INT_SET) {
+               /* client diff geom[4] */
+               new x, y, w, h;
+
+               x = getarg(2);
+               y = getarg(3);
+               w = getarg(4);
+               h = getarg(5);
+
+               custom_state(PART:"spacer", "default", 0.0);
+               set_state_val(PART:"spacer", STATE_REL1_OFFSET, x, y);
+               set_state_val(PART:"spacer", STATE_REL2_OFFSET, w, h);
+               set_state(PART:"spacer", "custom", 0.0);
+            }
+         }
+      }
+      parts {
+         spacer { "spacer";
+            program { signal: "e,action,show"; source: "e";
+               action: STATE_SET "default" 0.0;
+               transition: LINEAR 0.3;
+               target: "spacer";
+               //after: "idle";
+            }
+            program { signal: "e,action,hide"; source: "e";
+               action: STATE_SET "custom" 0.0;
+               transition: LINEAR 0.3;
+               target: "spacer";
+            }
+         }
+         part { "shadow"; clip: "clip";
+            desc {
+               image.normal: "win_shadow.png";
+               image.border: 14 14 14 14;
+               image.middle: 0;
+               rel1.to: "e.swallow.client";
+               rel1.offset: -7  -3;
+               rel2.to: "e.swallow.client";
+               rel2.offset: 6 11;
+               fill.smooth: 0;
+            }
+         }
+         rect { "outline";
+            desc {
+               color: 51 153 255 0;
+               rel1.to: "e.swallow.client";
+               rel1.offset: -2 -2;
+               rel2.to: "e.swallow.client";
+               rel2.offset: 2 2;
+               visible: 0;
+               link.base: "e,state,unfocused" "e";
+               link.transition: LINEAR 0.2;
+            }
+            desc { "active"; inherit: "default";
+               color: 51 153 255 170;
+               visible: 1;
+               link.base: "e,state,focused" "e";
+               link.transition: LINEAR 0.2;
+            }
+         }
+         rect { "bg";
+            desc {
+               color: 0 0 0 255;
+               rel1.to: "e.swallow.client";
+               rel2.to: "e.swallow.client";
+            }
+         }
+         swallow { "e.swallow.client"; clip: "clip";
+            desc {
+               rel1.to: "spacer";
+               rel2.to: "spacer";
+               rel1.offset: 10 10;
+               rel2.offset: -10 -10;
+               map.on: 1;
+               link.base: "mouse,out" "events";
+               link.transition: LINEAR 0.2;
+               //link.after: "idle";
+            }
+            desc { "active";
+               rel1.to: "spacer";
+               rel2.to: "spacer";
+               rel2.relative: 1.3 1.3;
+               rel2.offset: -1 -1;
+               link.base: "mouse,in" "events";
+               link.transition: LINEAR 0.2;
+            }
+            desc { "idle1"; inherit: "default";
+               map.on: 1;
+               map.rotation.z: -5;
+            }
+            desc { "idle2"; inherit: "idle1";
+               map.rotation.z: 5;
+            }
+            desc { "idle3"; inherit: "idle1";
+               map.rotation.z: 5;
+               map.rotation.x: -70;
+            }
+            desc { "idle4"; inherit: "idle1";
+               map.rotation.z: 0;
+               map.rotation.x: -360;
+               map.rotation.y: 360;
+            }
+            program { "idle";
+               in: 2.0 10.0;
+               action: STATE_SET "idle1";
+               transition: SINUSOIDAL 6.0;
+               target: "e.swallow.client";
+               sequence {
+                   action: STATE_SET "idle2";
+                   name: "idle2";
+                   transition: SINUSOIDAL 6.0;
+                   target: "e.swallow.client";
+                   in: 2.0 10.0;
+
+                   action: STATE_SET "idle3";
+                   name: "idle3";
+                   transition: ACCEL 6.0;
+                   target: "e.swallow.client";
+                   in: 2.0 10.0;
+
+                   action: STATE_SET "idle4";
+                   name: "idle4";
+                   transition: SINUSOIDAL 6.0;
+                   target: "e.swallow.client";
+                   in: 2.0 10.0;
+                   after: "idle";
+               }
+            }
+         }
+         rect { "clip";
+            desc {
+               rel1.offset: -9999 -9999;
+               rel2.offset: 9999 9999;
+               color: 255 255 255 200;
+               link.base: "mouse,out" "events";
+               link.transition: LINEAR 0.2;
+            }
+            desc { "active"; inherit: "default";
+               color: 255 255 255 255;
+               link.base: "mouse,in" "events";
+               link.transition: LINEAR 0.2;
+            }
+         }
+         proxy { "clone";
+            desc {
+               source: "e.swallow.client";
+               rel1.to: "e.swallow.client";
+               rel2.to: "e.swallow.client";
+               hid;
+               color: 255 255 255 0;
+            }
+            desc { "urgent1"; inherit: "default";
+               vis;
+               color: 255 255 255 255;
+            }
+            desc { "urgent2"; inherit: "default";
+               vis;
+               rel1.relative: -0.5 -0.5;
+               rel2.relative: 1.5 1.5;
+               color: 255 255 255 0;
+            }
+            program { name: "urgent";
+               signal: "e,state,urgent"; source: "e";
+               action: ACTION_STOP;
+               target: "go_big";
+               target: "go_big2";
+               after: "go_big";
+            }
+            program { name: "go_big";
+               action: STATE_SET "urgent1" 0.0;
+               target: "clone";
+               after: "go_big2";
+            }
+            program { name: "go_big2";
+               action: STATE_SET "urgent2" 0.0;
+               transition: LINEAR 0.5;
+               target: "clone";
+               after: "go_big";
+            }
+            program { name: "not_urgent";
+               signal: "e,state,not_urgent"; source: "e";
+               action: ACTION_STOP;
+               target: "go_big";
+               target: "go_big2";
+               after: "go_hid";
+            }
+            program { name: "go_hid";
+               action: STATE_SET "default" 0.0;
+               transition: LINEAR 0.5;
+               target: "clone";
+            }
+         }
+         text { "e.text.title"; clip: "clip"; effect: OUTLINE;
+             desc {
+                fixed: 1 1;
+                align: 0.0 0.0;
+                rel1.to_x: "e.swallow.icon";
+                rel1.to_y: "e.swallow.client";
+                rel1.relative: 1.0 1.0;
+                rel1.offset: 0 10;
+                rel2.to: "e.swallow.client";
+                color: 255 255 255 255;
+                color2: 0 0 0 255;
+                text {
+                   font: "Sans:style=Bold"; size: 12;
+                }
+             }
+         }
+         swallow { "e.swallow.icon"; clip: "clip";
+            desc {
+                fixed: 1 1;
+                min: 16 16;
+                align: 0.0 0.0;
+                rel1.to_x: "e.swallow.client";
+                rel1.to_y: "e.text.title";
+                rel1.offset: 0 -6;
+                rel2.to: "e.swallow.client";
+                rel2.relative: 0.0 1.0;
+            }
+         }
+         rect { "events"; mouse; repeat;
+            desc { color: 0 0 0 0; };
+            program { signal: "mouse,clicked,1"; source: "events";
+               action: SIGNAL_EMIT "e,action,activate" "e";
+            }
+            program { signal: "mouse,in"; source: "events";
+               action: SIGNAL_EMIT "e,state,active" "e";
+               sequence {
+                  action: ACTION_STOP;
+                  targets: "idle" "idle2" "idle3" "idle4";
+               }
+            }
+            program { signal: "mouse,out"; source: "events";
+               action: SIGNAL_EMIT "e,state,inactive" "e";
+            }
+         }
+      }
+   }
+   group { "e/modules/desksanity/zoom/client/drag";
+      images.image: "win_shadow.png" COMP;
+      script {
+         public message(Msg_Type:type, id, ...) {
+            if (type == MSG_INT_SET) {
+               /* client diff geom[4] */
+               new x, y, w, h;
+
+               x = getarg(2);
+               y = getarg(3);
+               w = getarg(4);
+               h = getarg(5);
+
+               custom_state(PART:"e.swallow.client", "default", 0.0);
+               set_state_val(PART:"e.swallow.client", STATE_REL1_OFFSET, x, y);
+               set_state_val(PART:"e.swallow.client", STATE_REL2_OFFSET, w, h);
+            }
+         }
+      }
+      parts {
+         rect { "clip";
+            desc {}
+            desc { "hid"; hid;
+               color: 255 255 255 0;
+               link.base: "e,drag,release" "e";
+               link.transition: LINEAR 0.1;
+            }
+         }
+         image { "shadow"; clip: "clip";
+            desc {
+               image.normal: "win_shadow.png";
+               image.border: 14 14 14 14;
+               image.middle: 0;
+               rel1.to: "e.swallow.client";
+               rel1.offset: -7  -3;
+               rel2.to: "e.swallow.client";
+               rel2.offset: 6 11;
+               fill.smooth: 0;
+            }
+         }
+         swallow { "e.swallow.client"; }
+         rect { "over"; clip: "clip";
+            desc {
+               rel1.to: "e.swallow.client";
+               rel2.to: "e.swallow.client";
+               color: 255 255 255 90;
+            }
+         }
+         program { signal: "e,drag,release"; source: "e";
+            action: STATE_SET "custom";
+            target: "e.swallow.client";
+            transition: LINEAR 0.1;
+            sequence {
+               action: SIGNAL_EMIT "e,action,done" "e";
+            }
+         }
+      }
+   }
+}
