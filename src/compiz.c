@@ -47,6 +47,8 @@ typedef struct
    Evas_GL_Surface *sfc;
    GLuint fbo;
    int w, h;
+   E_Client *ec;
+   Eina_Bool clear : 1;
 } Compiz_GL;
 EINTERN Evas_GL *gl = NULL;
 static Evas_GL_Config *glcfg = NULL;
@@ -114,7 +116,7 @@ compiz_job(XEvent *event)
 }
 
 static void
-createnotify(const E_Client *ec)
+createnotify(E_Client *ec)
 {
    XEvent *event;
 
@@ -131,6 +133,7 @@ createnotify(const E_Client *ec)
    event->xcreatewindow.width = ec->client.w;
    event->xcreatewindow.height = ec->client.h;
    event->xcreatewindow.override_redirect = ec->override;
+   e_object_ref(E_OBJECT(ec));
    compiz_job(event);
 }
 
@@ -157,8 +160,16 @@ compiz_client_add(void *d EINA_UNUSED, int t EINA_UNUSED, E_Event_Client *ev)
 static Eina_Bool
 compiz_client_del(void *d EINA_UNUSED, int t EINA_UNUSED, E_Event_Client *ev)
 {
-   evas_object_smart_callback_del(ev->ec->frame, "new_client", compiz_client_new_client);
+   XEvent *event;
+   CompWindow *w;
 
+   w = eina_hash_find(clients, &ev->ec);
+   event = calloc(1, sizeof(XEvent));
+   event->type = DestroyNotify;
+   event->xdestroywindow.display = ecore_x_display_get();
+   event->xdestroywindow.window = event->xdestroywindow.event = w->id;
+   evas_object_smart_callback_del(ev->ec->frame, "new_client", compiz_client_new_client);
+   compiz_job(event);
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -203,6 +214,7 @@ compiz_client_hide(void *d EINA_UNUSED, int t EINA_UNUSED, E_Event_Client *ev)
 {
    XEvent *event;
 
+   if (ev->ec->hidden) return ECORE_CALLBACK_RENEW;
    event = calloc(1, sizeof(XEvent));
    event->type = UnmapNotify;
    event->xunmap.display = ecore_x_display_get();
@@ -281,19 +293,10 @@ compiz_win_to_client(CompWindow *w)
 }
 
 static void
-compiz_client_free(void *data, Evas *e EINA_UNUSED, Evas_Object *obj, void *event_info EINA_UNUSED)
-{
-   CompWindow *w = data;
-   XEvent *event;
-
-
-}
-
-static void
 win_hash_free(E_Client *ec)
 {
    eina_hash_del_by_key(clients, &ec);
-   evas_object_event_callback_del(ec->frame, EVAS_CALLBACK_FREE, compiz_client_free);
+   e_object_unref(E_OBJECT(ec));
 }
 
 static void
@@ -340,8 +343,13 @@ compiz_client_render(void *data, Evas_Object *obj, void *event_info EINA_UNUSED)
 static void
 compiz_client_maximize(void *data, Evas_Object *obj, void *event_info EINA_UNUSED)
 {
+   CompWindow *w = data;
    E_Client *ec = e_comp_object_client_get(obj);
-   maximizeWindow(data, ec->maximized * MAXIMIZE_STATE);
+
+   if (ec->maximized) //unmaximizing
+     changeWindowState(w, w->state ^= MAXIMIZE_STATE);
+   else
+     changeWindowState(w, w->state |= MAXIMIZE_STATE);
 }
 
 EINTERN void
@@ -349,12 +357,11 @@ compiz_win_hash_client(CompWindow *w, E_Client *ec)
 {
    eina_hash_set(wins, &w, ec);
    eina_hash_set(clients, &ec, w);
-   evas_object_event_callback_add(ec->frame, EVAS_CALLBACK_FREE, compiz_client_free, w);
    evas_object_event_callback_add(ec->frame, EVAS_CALLBACK_RESTACK, compiz_client_stack, ec);
    evas_object_smart_callback_add(ec->frame, "render", compiz_client_render, w);
    evas_object_smart_callback_add(ec->frame, "damage", compiz_client_damage, w);
-   evas_object_smart_callback_add(ec->frame, "maximize_done", compiz_client_maximize, w);
-   evas_object_smart_callback_add(ec->frame, "unmaximize_done", compiz_client_maximize, w);
+   evas_object_smart_callback_add(ec->frame, "maximize_pre", compiz_client_maximize, w);
+   evas_object_smart_callback_add(ec->frame, "unmaximize_pre", compiz_client_maximize, w);
 }
 
 EINTERN void
@@ -373,7 +380,19 @@ compiz_texture_activate(CompTexture *texture, Eina_Bool set)
    if (!set) return;
    cgl = eina_hash_find(textures, &texture);
    evas_gl_make_current(gl, cgl->sfc, cgl->ctx);
+   compiz_glapi->glViewport(0, 0, cgl->w, cgl->h);
+   if (cgl->clear)
+     compiz_glapi->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+   cgl->clear = 0;
+}
 
+EINTERN void
+compiz_texture_clear(CompTexture *texture)
+{
+   Compiz_GL *cgl;
+
+   cgl = eina_hash_find(textures, &texture);
+   if (cgl) cgl->clear = 1;
 }
 
 EINTERN void
@@ -404,43 +423,34 @@ compiz_texture_init(CompTexture *texture)
      {
         cgl = malloc(sizeof(Compiz_GL));
         cgl->ctx = evas_gl_context_create(gl, NULL);
+        cgl->ec = ec;
         evas_gl_make_current(gl, NULL, cgl->ctx);
         compiz_glapi->glGenFramebuffers(1, &cgl->fbo);
-        compiz_glapi->glClearColor (0.0, 0.0, 0.0, 1.0);
+        compiz_glapi->glClearColor (0.0, 0.0, 0.0, 0.0);
         compiz_glapi->glBlendFunc (GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        //compiz_glapi->glEnable (GL_CULL_FACE);
-        //compiz_glapi->glDisable (GL_BLEND);
-        //compiz_glapi->glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+        compiz_glapi->glEnable (GL_CULL_FACE);
+        compiz_glapi->glDisable (GL_BLEND);
+        compiz_glapi->glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
         compiz_glapi->glEnableClientState (GL_VERTEX_ARRAY);
         compiz_glapi->glEnableClientState (GL_TEXTURE_COORD_ARRAY);
-        //compiz_glapi->glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmbient);
-        //compiz_glapi->glNormal3f(0.0f, 0.0f, -1.0f);
-        if (!win->screen->maxTextureSize)
-          compiz_glapi->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &win->screen->maxTextureSize);
-
-        compiz_glapi->glMatrixMode(GL_PROJECTION);
-        compiz_glapi->glLoadIdentity();
-        compiz_glapi->glMatrixMode(GL_MODELVIEW);
-        compiz_glapi->glLoadIdentity();
-        //compiz_glapi->glDepthRange (0, 1);
-        //compiz_glapi->glViewport(-1, -1, 2, 2);
-        //compiz_glapi->glRasterPos2f (0, 0);
-
         compiz_glapi->glMatrixMode(GL_PROJECTION);
         compiz_glapi->glLoadIdentity();
         compiz_glapi->glMultMatrixf(win->screen->projection);
         compiz_glapi->glMatrixMode(GL_MODELVIEW);
-        //compiz_glapi->glEnable(GL_LIGHT0);
-        //compiz_glapi->glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
-        //compiz_glapi->glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
-        //compiz_glapi->glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
+        compiz_glapi->glLoadIdentity();
+        if (!win->screen->maxTextureSize)
+          compiz_glapi->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &win->screen->maxTextureSize);
+
+        compiz_glapi->glEnable(GL_LIGHT0);
+        compiz_glapi->glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
+        compiz_glapi->glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
+        compiz_glapi->glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
         eina_hash_add(textures, &texture, cgl);
         win->id = window_get(ec);
      }
    cgl->w = w, cgl->h = h;
    cgl->sfc = evas_gl_surface_create(gl, glcfg, w, h);
    evas_gl_make_current(gl, cgl->sfc, cgl->ctx);
-   compiz_glapi->glViewport(0, 0, w, h);
    evas_gl_native_surface_get(gl, cgl->sfc, &ns);
    e_comp_object_native_surface_override(ec->frame, &ns);
 }

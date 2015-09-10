@@ -1119,7 +1119,6 @@ enableFragmentOperationsAndDrawGeometry(CompWindow *w,
      //}
    //else
      {
-        compiz_glapi->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         enableTexture(s, texture, filter);
 
         if (mask & PAINT_WINDOW_BLEND_MASK)
@@ -1281,6 +1280,7 @@ paintWindow(CompWindow *w,
    //if (mask & PAINT_WINDOW_TRANSFORMED_MASK ||
        //mask & PAINT_WINDOW_WITH_OFFSET_MASK)
      compiz_glapi->glPopMatrix();
+
    compiz_texture_activate(w->texture, 0);
 
    return status;

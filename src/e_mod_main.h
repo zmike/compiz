@@ -324,4 +324,5 @@ EINTERN void compiz_texture_init(CompTexture *texture);
 EINTERN void compiz_texture_bind(CompTexture *texture);
 EINTERN void compiz_texture_to_win(CompTexture *texture, CompWindow *win);
 EINTERN void compiz_texture_activate(CompTexture *texture, Eina_Bool set);
+EINTERN void compiz_texture_clear(CompTexture *texture);
 #endif
