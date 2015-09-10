@@ -321,4 +321,7 @@ EINTERN unsigned int win_type_to_compiz(E_Window_Type type);
 
 EINTERN void compiz_texture_del(CompTexture *texture);
 EINTERN void compiz_texture_init(CompTexture *texture);
+EINTERN void compiz_texture_bind(CompTexture *texture);
+EINTERN void compiz_texture_to_win(CompTexture *texture, CompWindow *win);
+EINTERN void compiz_texture_activate(CompTexture *texture, Eina_Bool set);
 #endif

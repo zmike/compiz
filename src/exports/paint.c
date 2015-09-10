@@ -94,11 +94,11 @@ prepareXCoords(CompScreen *screen,
 {
    compiz_glapi->glTranslatef(-0.5f, -0.5f, z);
    compiz_glapi->glScalef(1.0f / output->width,
-                   -1.0f / output->height,
-                   1.0f);
+                          -1.0f / output->height,
+                          1.0f);
    compiz_glapi->glTranslatef(-output->region.extents.x1,
-                       -output->region.extents.y2,
-                       0.0f);
+                              -output->region.extents.y2,
+                              0.0f);
 }
 
 void
@@ -126,16 +126,16 @@ paintCursor(CompCursor *c,
    compiz_glapi->glBegin(GL_QUADS);
 
    compiz_glapi->glTexCoord2f(COMP_TEX_COORD_X(&c->matrix, x1),
-                       COMP_TEX_COORD_Y(&c->matrix, y2));
+                              COMP_TEX_COORD_Y(&c->matrix, y2));
    compiz_glapi->glVertex2i(x1, y2);
    compiz_glapi->glTexCoord2f(COMP_TEX_COORD_X(&c->matrix, x2),
-                       COMP_TEX_COORD_Y(&c->matrix, y2));
+                              COMP_TEX_COORD_Y(&c->matrix, y2));
    compiz_glapi->glVertex2i(x2, y2);
    compiz_glapi->glTexCoord2f(COMP_TEX_COORD_X(&c->matrix, x2),
-                       COMP_TEX_COORD_Y(&c->matrix, y1));
+                              COMP_TEX_COORD_Y(&c->matrix, y1));
    compiz_glapi->glVertex2i(x2, y1);
    compiz_glapi->glTexCoord2f(COMP_TEX_COORD_X(&c->matrix, x1),
-                       COMP_TEX_COORD_Y(&c->matrix, y1));
+                              COMP_TEX_COORD_Y(&c->matrix, y1));
    compiz_glapi->glVertex2i(x1, y1);
 
    compiz_glapi->glEnd();
@@ -432,6 +432,7 @@ enableOutputClipping(CompScreen *screen,
                      Region region,
                      CompOutput *output)
 {
+#if 0
    GLfloat h = screen->height;
 
    GLfloat p1[2] = { region->extents.x1, h - region->extents.y2 };
@@ -462,15 +463,18 @@ enableOutputClipping(CompScreen *screen,
    compiz_glapi->glEnable(GL_CLIP_PLANE3);
 
    compiz_glapi->glPopMatrix();
+#endif
 }
 
 void
 disableOutputClipping(CompScreen *screen)
 {
+#if 0
    compiz_glapi->glDisable(GL_CLIP_PLANE0);
    compiz_glapi->glDisable(GL_CLIP_PLANE1);
    compiz_glapi->glDisable(GL_CLIP_PLANE2);
    compiz_glapi->glDisable(GL_CLIP_PLANE3);
+#endif
 }
 
 #define CLIP_PLANE_MASK (PAINT_SCREEN_TRANSFORMED_MASK | \
@@ -500,12 +504,12 @@ paintTransformedOutput(CompScreen *screen,
         transformToScreenSpace(screen, output, -sAttrib->zTranslate,
                                &sTransform);
 
-        compiz_glapi->glPushMatrix();
-        compiz_glapi->glLoadMatrixf(sTransform.m);
+        //compiz_glapi->glPushMatrix();
+        //compiz_glapi->glLoadMatrixf(sTransform.m);
 
         paintOutputRegion(screen, &sTransform, region, output, mask);
 
-        compiz_glapi->glPopMatrix();
+        //compiz_glapi->glPopMatrix();
 
         screen->disableOutputClipping(screen);
      }
@@ -514,12 +518,12 @@ paintTransformedOutput(CompScreen *screen,
         transformToScreenSpace(screen, output, -sAttrib->zTranslate,
                                &sTransform);
 
-        compiz_glapi->glPushMatrix();
-        compiz_glapi->glLoadMatrixf(sTransform.m);
+        //compiz_glapi->glPushMatrix();
+        //compiz_glapi->glLoadMatrixf(sTransform.m);
 
         paintOutputRegion(screen, &sTransform, region, output, mask);
 
-        compiz_glapi->glPopMatrix();
+        //compiz_glapi->glPopMatrix();
      }
 }
 
@@ -568,8 +572,8 @@ paintOutput(CompScreen *screen,
 
    transformToScreenSpace(screen, output, -DEFAULT_Z_CAMERA, &sTransform);
 
-   compiz_glapi->glPushMatrix();
-   compiz_glapi->glLoadMatrixf(sTransform.m);
+   //compiz_glapi->glPushMatrix();
+   //compiz_glapi->glLoadMatrixf(sTransform.m);
 
    paintOutputRegion(screen, &sTransform, region, output, mask);
 
@@ -708,7 +712,7 @@ drawWindowGeometry(CompWindow *w)
         compiz_glapi->glTexCoordPointer(w->texCoordSize, GL_FLOAT, stride, vertices);
      }
 
-   compiz_glapi->glDrawArrays(GL_TRIANGLES, 0, 6);
+   compiz_glapi->glDrawArrays(0x0007, 0, w->vCount);
 
    /* disable all texture coordinate arrays except 0 */
    texUnit = w->texUnits;
@@ -933,7 +937,7 @@ enableFragmentProgramAndDrawGeometry(CompWindow *w,
      {
         screenTexEnvMode(s, GL_MODULATE);
         compiz_glapi->glColor4f(attrib->brightness, attrib->brightness,
-                         attrib->brightness, BRIGHT);
+                                attrib->brightness, BRIGHT);
 
         (*w->drawWindowGeometry)(w);
 
@@ -961,160 +965,161 @@ enableFragmentOperationsAndDrawGeometry(CompWindow *w,
 {
    CompScreen *s = w->screen;
 
-   if (s->canDoSaturated && attrib->saturation != COLOR)
+   //if (s->canDoSaturated && attrib->saturation != COLOR)
+     //{
+        //GLfloat constant[4];
+
+        //if (mask & PAINT_WINDOW_BLEND_MASK)
+          //compiz_glapi->glEnable(GL_BLEND);
+
+        //enableTexture(s, texture, filter);
+
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_INTERPOLATE);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_TEXTURE);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_RGB, GL_PRIMARY_COLOR);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC2_RGB, GL_PRIMARY_COLOR);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND2_RGB, GL_SRC_ALPHA);
+
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_TEXTURE);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+
+        //compiz_glapi->glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
+
+        //s->activeTexture(GL_TEXTURE1);
+
+        //enableTexture(s, texture, filter);
+
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_DOT3_RGB);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_PREVIOUS);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_RGB, GL_CONSTANT);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+        //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
+
+        //if (s->canDoSlightlySaturated && attrib->saturation > 0)
+          //{
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_PREVIOUS);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+
+             //constant[0] = 0.5f + 0.5f * RED_SATURATION_WEIGHT;
+             //constant[1] = 0.5f + 0.5f * GREEN_SATURATION_WEIGHT;
+             //constant[2] = 0.5f + 0.5f * BLUE_SATURATION_WEIGHT;
+             //constant[3] = 1.0;
+
+             //compiz_glapi->glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constant);
+
+             //s->activeTexture(GL_TEXTURE2);
+
+             //enableTexture(s, texture, filter);
+
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_INTERPOLATE);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_TEXTURE0);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_RGB, GL_PREVIOUS);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC2_RGB, GL_CONSTANT);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND2_RGB, GL_SRC_ALPHA);
+
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_PREVIOUS);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+
+             //constant[3] = attrib->saturation / 65535.0f;
+
+             //compiz_glapi->glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constant);
+
+             //if (attrib->opacity < OPAQUE || attrib->brightness != BRIGHT)
+               //{
+                  //s->activeTexture(GL_TEXTURE3);
+
+                  //enableTexture(s, texture, filter);
+
+                  //constant[3] = attrib->opacity / 65535.0f;
+                  //constant[0] = constant[1] = constant[2] = constant[3] *
+                        //attrib->brightness / 65535.0f;
+
+                  //compiz_glapi->glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constant);
+
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_MODULATE);
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_PREVIOUS);
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_RGB, GL_CONSTANT);
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
+
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_PREVIOUS);
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_ALPHA, GL_CONSTANT);
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+                  //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
+
+                  //(*w->drawWindowGeometry)(w);
+
+                  //disableTexture(s, texture);
+
+                  //compiz_glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+                  //s->activeTexture(GL_TEXTURE2);
+               //}
+             //else
+               //{
+                  //(*w->drawWindowGeometry)(w);
+               //}
+
+             //disableTexture(s, texture);
+
+             //compiz_glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+             //s->activeTexture(GL_TEXTURE1);
+          //}
+        //else
+          //{
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_PREVIOUS);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_ALPHA, GL_CONSTANT);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+             //compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
+
+             //constant[3] = attrib->opacity / 65535.0f;
+             //constant[0] = constant[1] = constant[2] = constant[3] *
+                   //attrib->brightness / 65535.0f;
+
+             //constant[0] = 0.5f + 0.5f * RED_SATURATION_WEIGHT * constant[0];
+             //constant[1] = 0.5f + 0.5f * GREEN_SATURATION_WEIGHT * constant[1];
+             //constant[2] = 0.5f + 0.5f * BLUE_SATURATION_WEIGHT * constant[2];
+
+             //compiz_glapi->glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constant);
+
+             //(*w->drawWindowGeometry)(w);
+          //}
+
+        //disableTexture(s, texture);
+
+        //compiz_glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+        //s->activeTexture(GL_TEXTURE0);
+
+        //disableTexture(s, texture);
+
+        //compiz_glapi->glColor4f(defaultColor[0], defaultColor[1], defaultColor[2], defaultColor[3]);
+        //screenTexEnvMode(s, GL_REPLACE);
+
+        //if (mask & PAINT_WINDOW_BLEND_MASK)
+          //compiz_glapi->glDisable(GL_BLEND);
+     //}
+   //else
      {
-        GLfloat constant[4];
-
-        if (mask & PAINT_WINDOW_BLEND_MASK)
-          compiz_glapi->glEnable(GL_BLEND);
-
-        enableTexture(s, texture, filter);
-
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_INTERPOLATE);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_TEXTURE);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_RGB, GL_PRIMARY_COLOR);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC2_RGB, GL_PRIMARY_COLOR);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND2_RGB, GL_SRC_ALPHA);
-
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_TEXTURE);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-
-        compiz_glapi->glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
-
-        s->activeTexture(GL_TEXTURE1);
-
-        enableTexture(s, texture, filter);
-
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_DOT3_RGB);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_PREVIOUS);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_RGB, GL_CONSTANT);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
-        compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
-
-        if (s->canDoSlightlySaturated && attrib->saturation > 0)
-          {
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_PREVIOUS);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-
-             constant[0] = 0.5f + 0.5f * RED_SATURATION_WEIGHT;
-             constant[1] = 0.5f + 0.5f * GREEN_SATURATION_WEIGHT;
-             constant[2] = 0.5f + 0.5f * BLUE_SATURATION_WEIGHT;
-             constant[3] = 1.0;
-
-             compiz_glapi->glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constant);
-
-             s->activeTexture(GL_TEXTURE2);
-
-             enableTexture(s, texture, filter);
-
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_INTERPOLATE);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_TEXTURE0);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_RGB, GL_PREVIOUS);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC2_RGB, GL_CONSTANT);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND2_RGB, GL_SRC_ALPHA);
-
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_REPLACE);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_PREVIOUS);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-
-             constant[3] = attrib->saturation / 65535.0f;
-
-             compiz_glapi->glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constant);
-
-             if (attrib->opacity < OPAQUE || attrib->brightness != BRIGHT)
-               {
-                  s->activeTexture(GL_TEXTURE3);
-
-                  enableTexture(s, texture, filter);
-
-                  constant[3] = attrib->opacity / 65535.0f;
-                  constant[0] = constant[1] = constant[2] = constant[3] *
-                        attrib->brightness / 65535.0f;
-
-                  compiz_glapi->glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constant);
-
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
-
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_MODULATE);
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_RGB, GL_PREVIOUS);
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_RGB, GL_CONSTANT);
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
-
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_PREVIOUS);
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_ALPHA, GL_CONSTANT);
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-                  compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
-
-                  (*w->drawWindowGeometry)(w);
-
-                  disableTexture(s, texture);
-
-                  compiz_glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-                  s->activeTexture(GL_TEXTURE2);
-               }
-             else
-               {
-                  (*w->drawWindowGeometry)(w);
-               }
-
-             disableTexture(s, texture);
-
-             compiz_glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-             s->activeTexture(GL_TEXTURE1);
-          }
-        else
-          {
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC0_ALPHA, GL_PREVIOUS);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_SRC1_ALPHA, GL_CONSTANT);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
-             compiz_glapi->glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
-
-             constant[3] = attrib->opacity / 65535.0f;
-             constant[0] = constant[1] = constant[2] = constant[3] *
-                   attrib->brightness / 65535.0f;
-
-             constant[0] = 0.5f + 0.5f * RED_SATURATION_WEIGHT * constant[0];
-             constant[1] = 0.5f + 0.5f * GREEN_SATURATION_WEIGHT * constant[1];
-             constant[2] = 0.5f + 0.5f * BLUE_SATURATION_WEIGHT * constant[2];
-
-             compiz_glapi->glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, constant);
-
-             (*w->drawWindowGeometry)(w);
-          }
-
-        disableTexture(s, texture);
-
-        compiz_glapi->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-        s->activeTexture(GL_TEXTURE0);
-
-        disableTexture(s, texture);
-
-        compiz_glapi->glColor4f(defaultColor[0], defaultColor[1], defaultColor[2], defaultColor[3]);
-        screenTexEnvMode(s, GL_REPLACE);
-
-        if (mask & PAINT_WINDOW_BLEND_MASK)
-          compiz_glapi->glDisable(GL_BLEND);
-     }
-   else
-     {
+        compiz_glapi->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         enableTexture(s, texture, filter);
 
         if (mask & PAINT_WINDOW_BLEND_MASK)
@@ -1145,7 +1150,7 @@ enableFragmentOperationsAndDrawGeometry(CompWindow *w,
           {
              screenTexEnvMode(s, GL_MODULATE);
              compiz_glapi->glColor4f(attrib->brightness, attrib->brightness,
-                              attrib->brightness, BRIGHT);
+                                     attrib->brightness, BRIGHT);
 
              (*w->drawWindowGeometry)(w);
 
@@ -1156,7 +1161,6 @@ enableFragmentOperationsAndDrawGeometry(CompWindow *w,
           {
              (*w->drawWindowGeometry)(w);
           }
-
         disableTexture(w->screen, texture);
      }
 }
@@ -1261,10 +1265,12 @@ paintWindow(CompWindow *w,
    if (mask & PAINT_WINDOW_NO_CORE_INSTANCE_MASK)
      return TRUE;
 
+   compiz_texture_init(w->texture);
+   compiz_texture_activate(w->texture, 1);
    initFragmentAttrib(&fragment, attrib);
 
-   if (mask & PAINT_WINDOW_TRANSFORMED_MASK ||
-       mask & PAINT_WINDOW_WITH_OFFSET_MASK)
+   //if (mask & PAINT_WINDOW_TRANSFORMED_MASK ||
+       //mask & PAINT_WINDOW_WITH_OFFSET_MASK)
      {
         compiz_glapi->glPushMatrix();
         compiz_glapi->glLoadMatrixf(transform->m);
@@ -1272,9 +1278,10 @@ paintWindow(CompWindow *w,
 
    status = (*w->screen->drawWindow)(w, transform, &fragment, region, mask);
 
-   if (mask & PAINT_WINDOW_TRANSFORMED_MASK ||
-       mask & PAINT_WINDOW_WITH_OFFSET_MASK)
+   //if (mask & PAINT_WINDOW_TRANSFORMED_MASK ||
+       //mask & PAINT_WINDOW_WITH_OFFSET_MASK)
      compiz_glapi->glPopMatrix();
+   compiz_texture_activate(w->texture, 0);
 
    return status;
 }

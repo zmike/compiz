@@ -28,20 +28,28 @@
 static Eina_Hash *wins;
 static Eina_Hash *clients;
 static Eina_Hash *textures;
+static Eina_Hash *wintextures;
 static Eina_List *handlers;
 static Eina_List *hooks;
 static Eina_Array *events;
 static Ecore_Idle_Enterer *compiz_idle;
+
+static Eina_Bool init = EINA_FALSE;
 
 E_API int pointerX = 0;
 E_API int pointerY = 0;
 E_API int lastPointerX = 0;
 E_API int lastPointerY = 0;
 
-static Evas_GL_Config *glcfg;
-static Evas_GL_Surface *glsfc;
-EINTERN Evas_GL_Context *glctx = NULL;
+typedef struct
+{
+   Evas_GL_Context *ctx;
+   Evas_GL_Surface *sfc;
+   GLuint fbo;
+   int w, h;
+} Compiz_GL;
 EINTERN Evas_GL *gl = NULL;
+static Evas_GL_Config *glcfg = NULL;
 E_API Evas_GL_API *compiz_glapi = NULL;
 
 EINTERN int compiz_main(void);
@@ -330,25 +338,10 @@ compiz_client_render(void *data, Evas_Object *obj, void *event_info EINA_UNUSED)
 }
 
 static void
-compiz_client_dirty(void *data, Evas_Object *obj, void *event_info EINA_UNUSED)
+compiz_client_maximize(void *data, Evas_Object *obj, void *event_info EINA_UNUSED)
 {
-   CompWindow *w = data;
-   E_Client *ec;
-   GLuint fbo;
-   Evas_Native_Surface ns;
-
-   ec = e_comp_object_client_get(obj);
-
-   fbo = (uintptr_t)eina_hash_find(textures, &w->texture);
-   ns.version = EVAS_NATIVE_SURFACE_VERSION;
-   ns.type = EVAS_NATIVE_SURFACE_OPENGL;
-   ns.data.opengl.texture_id = w->texture->name;
-   ns.data.opengl.framebuffer_id = fbo;
-   ns.data.opengl.internal_format = GL_RGBA;
-   ns.data.opengl.format = GL_BGRA_EXT;
-   ns.data.opengl.x = ns.data.opengl.y = 0;
-   e_pixmap_size_get(ec->pixmap, (int*)&ns.data.opengl.w, (int*)&ns.data.opengl.h);
-   e_comp_object_native_surface_override(obj, &ns);
+   E_Client *ec = e_comp_object_client_get(obj);
+   maximizeWindow(data, ec->maximized * MAXIMIZE_STATE);
 }
 
 EINTERN void
@@ -359,8 +352,9 @@ compiz_win_hash_client(CompWindow *w, E_Client *ec)
    evas_object_event_callback_add(ec->frame, EVAS_CALLBACK_FREE, compiz_client_free, w);
    evas_object_event_callback_add(ec->frame, EVAS_CALLBACK_RESTACK, compiz_client_stack, ec);
    evas_object_smart_callback_add(ec->frame, "render", compiz_client_render, w);
-   evas_object_smart_callback_add(ec->frame, "dirty", compiz_client_dirty, w);
    evas_object_smart_callback_add(ec->frame, "damage", compiz_client_damage, w);
+   evas_object_smart_callback_add(ec->frame, "maximize_done", compiz_client_maximize, w);
+   evas_object_smart_callback_add(ec->frame, "unmaximize_done", compiz_client_maximize, w);
 }
 
 EINTERN void
@@ -370,25 +364,115 @@ compiz_win_hash_del(CompWindow *w)
 }
 
 EINTERN void
+compiz_texture_activate(CompTexture *texture, Eina_Bool set)
+{
+   Compiz_GL *cgl;
+
+   if (!set)
+     compiz_glapi->glFinish();
+   if (!set) return;
+   cgl = eina_hash_find(textures, &texture);
+   evas_gl_make_current(gl, cgl->sfc, cgl->ctx);
+
+}
+
+EINTERN void
 compiz_texture_init(CompTexture *texture)
 {
-   GLuint fbo;
+   Compiz_GL *cgl;
+   E_Client *ec;
+   CompWindow *win;
+   int w, h;
+   Evas_Native_Surface ns;
+   GLfloat globalAmbient[] = { 0.1f, 0.1f, 0.1f, 0.1f };
+   GLfloat ambientLight[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+   GLfloat diffuseLight[] = { 0.9f, 0.9f, 0.9f, 0.9f };
+   GLfloat light0Position[] = { -0.5f, 0.5f, -9.0f, 1.0f };
 
-   if (eina_hash_find(textures, &texture)) return;
-   compiz_glapi->glGenFramebuffers(1, &fbo);
-   compiz_glapi->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+   win = eina_hash_find(wintextures, &texture);
+   if (!win) abort();
+   evas_gl_make_current(gl, NULL, NULL);
+   ec = compiz_win_to_client(win);
+   e_pixmap_size_get(ec->pixmap, &w, &h);
+   cgl = eina_hash_find(textures, &texture);
+   if (cgl)
+     {
+        if ((cgl->w == w) && (cgl->h == h)) return;
+        evas_gl_surface_destroy(gl, cgl->sfc);
+     }
+   else
+     {
+        cgl = malloc(sizeof(Compiz_GL));
+        cgl->ctx = evas_gl_context_create(gl, NULL);
+        evas_gl_make_current(gl, NULL, cgl->ctx);
+        compiz_glapi->glGenFramebuffers(1, &cgl->fbo);
+        compiz_glapi->glClearColor (0.0, 0.0, 0.0, 1.0);
+        compiz_glapi->glBlendFunc (GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        //compiz_glapi->glEnable (GL_CULL_FACE);
+        //compiz_glapi->glDisable (GL_BLEND);
+        //compiz_glapi->glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+        compiz_glapi->glEnableClientState (GL_VERTEX_ARRAY);
+        compiz_glapi->glEnableClientState (GL_TEXTURE_COORD_ARRAY);
+        //compiz_glapi->glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmbient);
+        //compiz_glapi->glNormal3f(0.0f, 0.0f, -1.0f);
+        if (!win->screen->maxTextureSize)
+          compiz_glapi->glGetIntegerv(GL_MAX_TEXTURE_SIZE, &win->screen->maxTextureSize);
+
+        compiz_glapi->glMatrixMode(GL_PROJECTION);
+        compiz_glapi->glLoadIdentity();
+        compiz_glapi->glMatrixMode(GL_MODELVIEW);
+        compiz_glapi->glLoadIdentity();
+        //compiz_glapi->glDepthRange (0, 1);
+        //compiz_glapi->glViewport(-1, -1, 2, 2);
+        //compiz_glapi->glRasterPos2f (0, 0);
+
+        compiz_glapi->glMatrixMode(GL_PROJECTION);
+        compiz_glapi->glLoadIdentity();
+        compiz_glapi->glMultMatrixf(win->screen->projection);
+        compiz_glapi->glMatrixMode(GL_MODELVIEW);
+        //compiz_glapi->glEnable(GL_LIGHT0);
+        //compiz_glapi->glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight);
+        //compiz_glapi->glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight);
+        //compiz_glapi->glLightfv(GL_LIGHT0, GL_POSITION, light0Position);
+        eina_hash_add(textures, &texture, cgl);
+        win->id = window_get(ec);
+     }
+   cgl->w = w, cgl->h = h;
+   cgl->sfc = evas_gl_surface_create(gl, glcfg, w, h);
+   evas_gl_make_current(gl, cgl->sfc, cgl->ctx);
+   compiz_glapi->glViewport(0, 0, w, h);
+   evas_gl_native_surface_get(gl, cgl->sfc, &ns);
+   e_comp_object_native_surface_override(ec->frame, &ns);
+}
+
+EINTERN void
+compiz_texture_bind(CompTexture *texture)
+{
+   Compiz_GL *cgl;
+
+   cgl = eina_hash_find(textures, &texture);
+   compiz_glapi->glBindFramebuffer(GL_FRAMEBUFFER, cgl->fbo);
    compiz_glapi->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture->name, 0);
-   eina_hash_add(textures, &texture, (uintptr_t*)fbo);
    compiz_glapi->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+EINTERN void
+compiz_texture_to_win(CompTexture *texture, CompWindow *w)
+{
+   eina_hash_set(wintextures, &texture, w);
 }
 
 EINTERN void
 compiz_texture_del(CompTexture *texture)
 {
-   GLuint fbo;
+   Compiz_GL *cgl;
 
-   fbo = (uintptr_t)eina_hash_set(textures, &texture, NULL);
-   compiz_glapi->glDeleteFramebuffers(1, &fbo);
+   cgl = eina_hash_set(textures, &texture, NULL);
+   evas_gl_make_current(gl, cgl->sfc, cgl->ctx);
+   compiz_glapi->glDeleteFramebuffers(1, &cgl->fbo);
+   evas_gl_surface_destroy(gl, cgl->sfc);
+   evas_gl_context_destroy(gl, cgl->ctx);
+   free(cgl);
 }
 
 static Eina_Bool
@@ -420,27 +504,6 @@ compiz_mouse_move(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Event_Mous
 static void
 compiz_gl_init()
 {
-   glsfc = evas_gl_surface_create(gl, glcfg, e_comp->w, e_comp->h);
-   compiz_glapi = evas_gl_api_get(gl);
-#define GLFN(FN) \
-   if (!compiz_glapi->FN) \
-     compiz_glapi->FN = evas_gl_proc_address_get(gl, #FN)
-   GLFN(glLightModelfv);
-   GLFN(glLightfv);
-   GLFN(glNormal3f);
-   GLFN(glPushMatrix);
-   GLFN(glPopMatrix);
-   GLFN(glMatrixMode);
-   GLFN(glLoadMatrixf);
-   GLFN(glLoadIdentity);
-   GLFN(glMultMatrixf);
-   GLFN(glTexEnvi);
-   GLFN(glColor4f);
-   GLFN(glVertexPointer);
-   GLFN(glEnableClientState);
-   GLFN(glDisableClientState);
-   GLFN(glTexCoordPointer);
-#undef GLFN   
    assert(!compiz_main());
 }
 
@@ -448,9 +511,11 @@ static void
 compiz_gl_render(void)
 {
    struct timeval tv;
-   evas_gl_make_current(gl, glsfc, glctx);
-   if (!compiz_glapi)
-     compiz_gl_init();
+   if (!init)
+     {
+        assert(!compiz_main());
+        init = EINA_TRUE;
+     }
    gettimeofday (&tv, 0);
    handleTimeouts(&tv);
    fprintf(stderr, "COMPIZ LOOP\n");
@@ -520,19 +585,45 @@ compiz_move_end(void *d EINA_UNUSED, E_Client *ec)
    w->screen->windowUngrabNotify(w);
 }
 
+static void
+gl_fn_init(void)
+{
+#define GLFN(FN) \
+   if (!compiz_glapi->FN) \
+     compiz_glapi->FN = evas_gl_proc_address_get(gl, #FN)
+   GLFN(glLightModelfv);
+   GLFN(glLightfv);
+   GLFN(glNormal3f);
+   GLFN(glPushMatrix);
+   GLFN(glPopMatrix);
+   GLFN(glMatrixMode);
+   GLFN(glLoadMatrixf);
+   GLFN(glLoadIdentity);
+   GLFN(glMultMatrixf);
+   GLFN(glTexEnvi);
+   GLFN(glColor4f);
+   GLFN(glVertexPointer);
+   GLFN(glEnableClientState);
+   GLFN(glDisableClientState);
+   GLFN(glTexCoordPointer);
+#undef GLFN  
+}
+
 EINTERN void
 compiz_init(void)
 {
    glcfg = evas_gl_config_new();
-   glcfg->color_format = EVAS_GL_RGB_888;
+   glcfg->color_format = EVAS_GL_RGBA_8888;
    glcfg->gles_version = EVAS_GL_GLES_2_X;
    glcfg->depth_bits = EVAS_GL_DEPTH_BIT_24;
    glcfg->stencil_bits = EVAS_GL_STENCIL_BIT_8;
    gl = evas_gl_new(e_comp->evas);
-   glctx = evas_gl_context_create(gl, NULL);
+   compiz_glapi = evas_gl_api_get(gl);
+   gl_fn_init();
    wins = eina_hash_pointer_new((Eina_Free_Cb)win_hash_free);
    clients = eina_hash_pointer_new(NULL);
    textures = eina_hash_pointer_new(NULL);
+   wintextures = eina_hash_pointer_new(NULL);
    //evas_event_callback_add(e_comp->evas, EVAS_CALLBACK_RENDER_PRE, (Evas_Event_Cb)compiz_render_pre, NULL);
    E_LIST_HANDLER_APPEND(handlers, ECORE_EVENT_MOUSE_MOVE, compiz_mouse_move, NULL);
    E_LIST_HANDLER_APPEND(handlers, E_EVENT_CLIENT_ADD, compiz_client_add, NULL);
@@ -557,10 +648,6 @@ compiz_shutdown(void)
    E_FREE_LIST(hooks, e_client_hook_del);
    E_FREE_FUNC(compiz_idle, ecore_idle_enterer_del);
    compiz_fini();
-   evas_gl_surface_destroy(gl, glsfc);
-   evas_gl_context_destroy(gl, glctx);
-   glctx = NULL;
-   glsfc = NULL;
    E_FREE_FUNC(gl, evas_gl_free);
    E_FREE_FUNC(glcfg, evas_gl_config_free);
    e_comp->pre_render_cbs = eina_list_remove(e_comp->pre_render_cbs, compiz_gl_render);
@@ -568,4 +655,6 @@ compiz_shutdown(void)
    eina_hash_free(wins);
    eina_hash_free(clients);
    eina_hash_free(textures);
+   eina_hash_free(wintextures);
+   init = EINA_FALSE;
 }

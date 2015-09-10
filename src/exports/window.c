@@ -1394,6 +1394,7 @@ releaseWindow(CompWindow *w)
              destroyTexture(w->screen, w->texture);
 
              w->texture = texture;
+             compiz_texture_to_win(texture, w);
           }
 
         XFreePixmap(w->screen->display->display, w->pixmap);
@@ -1973,6 +1974,7 @@ addWindow(CompScreen *screen,
         free(w);
         return;
      }
+   compiz_texture_to_win(w->texture, w);
 
    w->screen = screen;
    w->pixmap = None;
@@ -2198,8 +2200,8 @@ addWindow(CompScreen *screen,
    if (w->type & CompWindowTypeDesktopMask)
      w->paint.opacity = OPAQUE;
    else
-     w->paint.opacity = getWindowProp32 (d, w->id,
-                                            d->winOpacityAtom, OPAQUE);
+     w->paint.opacity = getWindowProp32(d, w->id,
+                                        d->winOpacityAtom, OPAQUE);
 
    w->paint.brightness = getWindowProp32(d, w->id,
                                          d->winBrightnessAtom, BRIGHT);

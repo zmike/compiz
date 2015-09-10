@@ -146,7 +146,7 @@ imageToTexture(CompScreen *screen,
       GL_COMPRESSED_RGBA_ARB : GL_RGBA);
 
    compiz_glapi->glTexImage2D(texture->target, 0, internalFormat, width, height, 0,
-                       format, type, data);
+                              format, type, data);
 
    texture->filter = GL_NEAREST;
 
@@ -371,7 +371,7 @@ bindPixmapToTexture(CompScreen *screen,
 
    texture->wrap = GL_CLAMP_TO_EDGE;
 
-   compiz_texture_init(texture);
+   compiz_texture_bind(texture);
 
    compiz_glapi->glBindTexture(texture->target, 0);
 
@@ -411,6 +411,7 @@ enableTexture(CompScreen *screen,
 {
    makeScreenCurrent(screen);
    compiz_glapi->glEnable(texture->target);
+   compiz_glapi->glActiveTexture(GL_TEXTURE0);
    compiz_glapi->glBindTexture(texture->target, texture->name);
 
    if (strictBinding && texture->pixmap)
@@ -426,11 +427,11 @@ enableTexture(CompScreen *screen,
         if (texture->filter != GL_NEAREST)
           {
              compiz_glapi->glTexParameteri(texture->target,
-                                    GL_TEXTURE_MIN_FILTER,
-                                    GL_NEAREST);
+                                           GL_TEXTURE_MIN_FILTER,
+                                           GL_NEAREST);
              compiz_glapi->glTexParameteri(texture->target,
-                                    GL_TEXTURE_MAG_FILTER,
-                                    GL_NEAREST);
+                                           GL_TEXTURE_MAG_FILTER,
+                                           GL_NEAREST);
 
              texture->filter = GL_NEAREST;
           }
@@ -442,24 +443,24 @@ enableTexture(CompScreen *screen,
              if (screen->textureNonPowerOfTwo && screen->fbo && texture->mipmap)
                {
                   compiz_glapi->glTexParameteri(texture->target,
-                                         GL_TEXTURE_MIN_FILTER,
-                                         GL_LINEAR_MIPMAP_LINEAR);
+                                                GL_TEXTURE_MIN_FILTER,
+                                                GL_LINEAR_MIPMAP_LINEAR);
 
                   if (texture->filter != GL_LINEAR)
                     compiz_glapi->glTexParameteri(texture->target,
-                                           GL_TEXTURE_MAG_FILTER,
-                                           GL_LINEAR);
+                                                  GL_TEXTURE_MAG_FILTER,
+                                                  GL_LINEAR);
 
                   texture->filter = GL_LINEAR_MIPMAP_LINEAR;
                }
              else if (texture->filter != GL_LINEAR)
                {
                   compiz_glapi->glTexParameteri(texture->target,
-                                         GL_TEXTURE_MIN_FILTER,
-                                         GL_LINEAR);
+                                                GL_TEXTURE_MIN_FILTER,
+                                                GL_LINEAR);
                   compiz_glapi->glTexParameteri(texture->target,
-                                         GL_TEXTURE_MAG_FILTER,
-                                         GL_LINEAR);
+                                                GL_TEXTURE_MAG_FILTER,
+                                                GL_LINEAR);
 
                   texture->filter = GL_LINEAR;
                }
@@ -467,11 +468,11 @@ enableTexture(CompScreen *screen,
         else
           {
              compiz_glapi->glTexParameteri(texture->target,
-                                    GL_TEXTURE_MIN_FILTER,
-                                    screen->display->textureFilter);
+                                           GL_TEXTURE_MIN_FILTER,
+                                           screen->display->textureFilter);
              compiz_glapi->glTexParameteri(texture->target,
-                                    GL_TEXTURE_MAG_FILTER,
-                                    screen->display->textureFilter);
+                                           GL_TEXTURE_MAG_FILTER,
+                                           screen->display->textureFilter);
 
              texture->filter = screen->display->textureFilter;
           }

@@ -1462,8 +1462,8 @@ eventLoop(void)
    CompScreen *s;
    CompWindow *w;
    CompTimeout *t;
-   int time, timeToNextRedraw = 0;
-   unsigned int damageMask, mask;
+   int time, timeToNextRedraw = MAXSHORT;
+   unsigned int damageMask = 0, mask;
 
    //for (d = core.displays; d; d = d->next)
    //d->watchFdHandle =
@@ -1539,24 +1539,6 @@ eventLoop(void)
      {
         for (s = d->screens; s; s = s->next)
           {
-             if (s->damageMask)
-               {
-                  finishScreenDrawing(s);
-               }
-             else
-               {
-                  s->idle = TRUE;
-               }
-          }
-     }
-
-   damageMask = 0;
-   timeToNextRedraw = MAXSHORT;
-
-   for (d = core.displays; d; d = d->next)
-     {
-        for (s = d->screens; s; s = s->next)
-          {
              if (!s->damageMask)
                continue;
 
@@ -1577,14 +1559,14 @@ eventLoop(void)
      {
         time = timeToNextRedraw;
         //if (time)
-          //time = doPoll(time);
+        //time = doPoll(time);
 
         if (time == 0)
           {
              //gettimeofday(&tv, 0);
 
              //if (core.timeouts)
-               //handleTimeouts(&tv);
+             //handleTimeouts(&tv);
 
              for (d = core.displays; d; d = d->next)
                {
@@ -1715,21 +1697,21 @@ eventLoop(void)
                                       y = s->height - pBox->y2;
 
                                       compiz_glapi->glBitmap(0, 0, 0, 0,
-                                                      pBox->x1 - s->rasterX,
-                                                      y - s->rasterY,
-                                                      NULL);
+                                                             pBox->x1 - s->rasterX,
+                                                             y - s->rasterY,
+                                                             NULL);
 
                                       s->rasterX = pBox->x1;
                                       s->rasterY = y;
 
                                       compiz_glapi->glScissor(pBox->x1, y,
-                                                       pBox->x2 - pBox->x1,
-                                                       pBox->y2 - pBox->y1);
+                                                              pBox->x2 - pBox->x1,
+                                                              pBox->y2 - pBox->y1);
 
                                       compiz_glapi->glCopyPixels(pBox->x1, y,
-                                                          pBox->x2 - pBox->x1,
-                                                          pBox->y2 - pBox->y1,
-                                                          GL_COLOR);
+                                                                 pBox->x2 - pBox->x1,
+                                                                 pBox->y2 - pBox->y1,
+                                                                 GL_COLOR);
 
                                       pBox++;
                                    }
@@ -1768,32 +1750,47 @@ eventLoop(void)
                }
           }
      }
+
+   for (d = core.displays; d; d = d->next)
+     {
+        for (s = d->screens; s; s = s->next)
+          {
+             if (s->damageMask)
+               {
+                  finishScreenDrawing(s);
+               }
+             else
+               {
+                  s->idle = TRUE;
+               }
+          }
+     }
    //else
-     //{
-        //if (core.timeouts)
-          //{
-             //if (core.timeouts->minLeft > 0)
-               //{
-                  //t = core.timeouts;
-                  //time = t->maxLeft;
-                  //while (t && t->minLeft <= time)
-                    //{
-                       //if (t->maxLeft < time)
-                         //time = t->maxLeft;
-                       //t = t->next;
-                    //}
-                  //doPoll(time);
-               //}
+   //{
+   //if (core.timeouts)
+   //{
+   //if (core.timeouts->minLeft > 0)
+   //{
+   //t = core.timeouts;
+   //time = t->maxLeft;
+   //while (t && t->minLeft <= time)
+   //{
+   //if (t->maxLeft < time)
+   //time = t->maxLeft;
+   //t = t->next;
+   //}
+   //doPoll(time);
+   //}
 
-             //gettimeofday(&tv, 0);
+   //gettimeofday(&tv, 0);
 
-             //handleTimeouts(&tv);
-          //}
-        //else
-          //{
-             //doPoll(-1);
-          //}
-     //}
+   //handleTimeouts(&tv);
+   //}
+   //else
+   //{
+   //doPoll(-1);
+   //}
+   //}
 //}
 
 //for (d = core.displays; d; d = d->next)
@@ -2846,24 +2843,24 @@ warpPointer(CompScreen *s,
      pointerY = 0;
 
    //XWarpPointer(display->display,
-                //None, s->root,
-                //0, 0, 0, 0,
-                //pointerX, pointerY);
+   //None, s->root,
+   //0, 0, 0, 0,
+   //pointerX, pointerY);
 
    //XSync(display->display, FALSE);
 
    //while (XCheckMaskEvent(display->display,
-                          //LeaveWindowMask |
-                          //EnterWindowMask |
-                          //PointerMotionMask,
-                          //&event))
-     //;
+   //LeaveWindowMask |
+   //EnterWindowMask |
+   //PointerMotionMask,
+   //&event))
+   //;
 
    //if (!inHandleEvent)
-     //{
-        //lastPointerX = pointerX;
-        //lastPointerY = pointerY;
-     //}
+   //{
+   //lastPointerX = pointerX;
+   //lastPointerY = pointerY;
+   //}
 }
 
 Bool

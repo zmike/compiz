@@ -2337,7 +2337,7 @@ handleEvent(CompDisplay *d,
         break;
 
       default:
-        if (event->type == d->damageEvent + XDamageNotify)
+        if (event->type == d->damageEvent)
           {
              XDamageNotifyEvent *de = (XDamageNotifyEvent *)event;
 
