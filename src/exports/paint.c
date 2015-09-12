@@ -1193,8 +1193,6 @@ drawWindowTexture(CompWindow *w,
                                                 filter,
                                                 mask);
      }
-   ec = compiz_win_to_client(w);
-   e_comp_object_dirty(ec->frame);
 }
 
 Bool

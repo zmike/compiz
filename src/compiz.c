@@ -32,7 +32,8 @@ static Eina_Hash *wintextures;
 static Eina_List *handlers;
 static Eina_List *hooks;
 static Eina_Array *events;
-static Ecore_Idle_Enterer *compiz_idle;
+static Ecore_Animator *compiz_anim;
+static Ecore_Timer *compiz_timer;
 
 static Eina_Bool init = EINA_FALSE;
 
@@ -46,8 +47,9 @@ typedef struct
    Evas_GL_Context *ctx;
    Evas_GL_Surface *sfc;
    GLuint fbo;
-   int w, h;
    E_Client *ec;
+   Evas_Object *obj;
+   Eina_Tiler *damage;
    Eina_Bool clear : 1;
 } Compiz_GL;
 EINTERN Evas_GL *gl = NULL;
@@ -59,6 +61,7 @@ EINTERN void compiz_fini(void);
 EINTERN void handleDisplayEvent(Display *dpy, XEvent *event);
 EINTERN void handleTimeouts (struct timeval *tv);
 EINTERN void handleAddClient(E_Client *ec);
+extern CompCore core;
 
 static int movegrab;
 static int resizegrab;
@@ -67,21 +70,92 @@ static int ecx, ecy;
 
 static Ecore_Job *event_job;
 
-#define GLERR do { on_error(compiz_glapi, __FUNCTION__, __LINE__); } while (0)
-
 static void
-on_error(Evas_GL_API *api, const char *func, int line)
+compiz_render_resize(Compiz_GL *cgl)
 {
-   int _e = api->glGetError();
-   if (_e)
-     {
-        fprintf(stderr, "%s:%d: GL error 0x%04x\n", func, line, _e);
-        abort();
-     }
-   return;
+   evas_object_geometry_set(cgl->obj, 0, 0, e_comp->w, e_comp->h);
+   evas_object_image_size_set(cgl->obj, e_comp->w, e_comp->h);
 }
 
 static void
+compiz_damage(void)
+{
+   CompDisplay *d;
+   CompScreen *s;
+   CompWindow *w;
+   Eina_Bool thaw = EINA_FALSE;
+
+   for (d = core.displays; d; d = d->next)
+     for (s = d->screens; s; s = s->next)
+       {
+          if (!s->damageMask)
+            for (w = s->windows; w; w = w->next)
+              {
+                 E_Client *ec;
+
+                 ec = compiz_win_to_client(w);
+                 if ((w->attrib.x == ec->client.x) && (w->attrib.y == ec->client.y))
+                   continue;
+                 moveWindow(w, ec->client.x - w->attrib.x, ec->client.y - w->attrib.y, TRUE, TRUE);
+                 syncWindowPosition(w);
+                 if (w->grabbed)
+                   w->screen->windowUngrabNotify(w);
+              }
+          if (s->damageMask)
+            {
+               evas_damage_rectangle_add(e_comp->evas, 0, 0, 1, 1);
+               thaw = EINA_TRUE;
+            }
+       }
+   if (eina_array_count(events) || thaw)
+     ecore_animator_thaw(compiz_anim);
+   else
+     ecore_animator_freeze(compiz_anim);
+}
+
+static void compiz_timers(void);
+
+static Eina_Bool
+compiz_timer_cb(void *d EINA_UNUSED)
+{
+   struct timeval tv;
+
+   gettimeofday (&tv, 0);
+   handleTimeouts(&tv);
+   compiz_timers();
+   return EINA_TRUE;
+}
+
+static void
+compiz_timers(void)
+{
+   if (core.timeouts)
+     {
+        if (compiz_timer)
+          {
+             ecore_timer_interval_set(compiz_timer, core.timeouts->minLeft);
+             ecore_timer_reset(compiz_timer);
+          }
+        else
+          compiz_timer = ecore_timer_add(core.timeouts->minLeft, compiz_timer_cb, NULL);
+     }
+   else
+     E_FREE_FUNC(compiz_timer, ecore_timer_del);
+}
+
+static void
+compiz_client_frame_recalc(E_Client *ec)
+{
+   updateWindowOutputExtents(eina_hash_find(clients, &ec));
+}
+
+static void
+compiz_client_frame_calc(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
+{
+   compiz_client_frame_recalc(data);
+}
+
+static Eina_Bool
 compiz_idle_cb(void *data EINA_UNUSED)
 {
    struct timeval tv;
@@ -99,20 +173,23 @@ compiz_idle_cb(void *data EINA_UNUSED)
              if (!ec)
                ec = e_pixmap_find_client(E_PIXMAP_TYPE_WL, ev->xcreatewindow.window);
              handleAddClient(ec);
+             compiz_client_frame_recalc(ec);
           }
         handleDisplayEvent(ecore_x_display_get(), ev);
         free(ev);
      }
    gettimeofday (&tv, 0);
    handleTimeouts(&tv);
+   compiz_timers();
+   compiz_damage();
+   return EINA_TRUE;
 }
 
 static void
 compiz_job(XEvent *event)
 {
    eina_array_push(events, event);
-   if (!event_job)
-     ecore_job_add(compiz_idle_cb, NULL);
+   ecore_animator_thaw(compiz_anim);
 }
 
 static void
@@ -313,11 +390,15 @@ compiz_client_damage(void *data, Evas_Object *obj, void *event_info)
 {
    CompWindow *w = data;
    E_Client *ec;
+   Compiz_GL *cgl;
    Eina_Rectangle *r = event_info;
    XEvent *event;
    XDamageNotifyEvent *de;
 
    ec = e_comp_object_client_get(obj);
+   cgl = eina_hash_find(textures, &w->texture);
+   if (cgl)
+     eina_tiler_rect_add(cgl->damage, &(Eina_Rectangle){ec->client.x + r->x, ec->client.y + r->y, r->w, r->h});
    event = calloc(1, sizeof(XEvent));
    event->type = DAMAGE_EVENT + XDamageNotify;
    de = (XDamageNotifyEvent*)event;
@@ -350,11 +431,27 @@ compiz_client_maximize(void *data, Evas_Object *obj, void *event_info EINA_UNUSE
      changeWindowState(w, w->state ^= MAXIMIZE_STATE);
    else
      changeWindowState(w, w->state |= MAXIMIZE_STATE);
+   updateWindowAttributes(w, CompStackingUpdateModeNone);
+}
+
+static void
+compiz_client_shade(void *data, Evas_Object *obj, void *event_info EINA_UNUSED)
+{
+   CompWindow *w = data;
+   E_Client *ec = e_comp_object_client_get(obj);
+
+   if (ec->shaded)
+     changeWindowState(w, w->state ^= CompWindowStateShadedMask);
+   else
+     changeWindowState(w, w->state |= CompWindowStateShadedMask);
+   updateWindowAttributes(w, CompStackingUpdateModeNone);
 }
 
 EINTERN void
 compiz_win_hash_client(CompWindow *w, E_Client *ec)
 {
+   E_Event_Client ev;
+
    eina_hash_set(wins, &w, ec);
    eina_hash_set(clients, &ec, w);
    evas_object_event_callback_add(ec->frame, EVAS_CALLBACK_RESTACK, compiz_client_stack, ec);
@@ -362,6 +459,13 @@ compiz_win_hash_client(CompWindow *w, E_Client *ec)
    evas_object_smart_callback_add(ec->frame, "damage", compiz_client_damage, w);
    evas_object_smart_callback_add(ec->frame, "maximize_pre", compiz_client_maximize, w);
    evas_object_smart_callback_add(ec->frame, "unmaximize_pre", compiz_client_maximize, w);
+   evas_object_smart_callback_add(ec->frame, "shaded", compiz_client_shade, w);
+   evas_object_smart_callback_add(ec->frame, "unshaded", compiz_client_shade, w);
+   evas_object_smart_callback_add(ec->frame, "shade_done", compiz_client_shade, w);
+   evas_object_smart_callback_add(ec->frame, "frame_recalc_done", compiz_client_frame_calc, ec);
+   ev.ec = ec;
+   compiz_client_configure(NULL, 0, &ev);
+   ecore_job_add((Ecore_Cb)compiz_idle_cb, NULL);
 }
 
 EINTERN void
@@ -380,7 +484,7 @@ compiz_texture_activate(CompTexture *texture, Eina_Bool set)
    if (!set) return;
    cgl = eina_hash_find(textures, &texture);
    evas_gl_make_current(gl, cgl->sfc, cgl->ctx);
-   compiz_glapi->glViewport(0, 0, cgl->w, cgl->h);
+   compiz_glapi->glViewport(0, 0, e_comp->w, e_comp->h);
    if (cgl->clear)
      compiz_glapi->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    cgl->clear = 0;
@@ -394,6 +498,54 @@ compiz_texture_clear(CompTexture *texture)
    cgl = eina_hash_find(textures, &texture);
    if (cgl) cgl->clear = 1;
 }
+
+static void
+cshow(void *data, ...)
+{
+   evas_object_show(data);
+}
+
+static void
+chide(void *data, ...)
+{
+   evas_object_hide(data);
+}
+
+static void
+cdirty(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
+{
+   Compiz_GL *cgl = data;
+   Evas_Native_Surface ns;
+
+   if (eina_tiler_empty(cgl->damage))
+     evas_object_image_data_update_add(cgl->obj, cgl->ec->client.x, cgl->ec->client.y, cgl->ec->client.w, cgl->ec->client.h);
+   else
+     {
+        Eina_Iterator *it;
+        Eina_Rectangle *r;
+
+        it = eina_tiler_iterator_new(cgl->damage);
+        EINA_ITERATOR_FOREACH(it, r)
+          evas_object_image_data_update_add(cgl->obj, r->x, r->y, r->w, r->h);
+        eina_iterator_free(it);
+     }
+   eina_tiler_clear(cgl->damage);
+   evas_gl_native_surface_get(gl, cgl->sfc, &ns);
+   evas_object_image_native_surface_set(cgl->obj, &ns);
+}
+
+static void
+cshade(void *d, Evas_Object *obj EINA_UNUSED, void *ev EINA_UNUSED)
+{
+   Compiz_GL *cgl = d;
+
+   if (!cgl->ec->shaded)
+     evas_object_hide(cgl->obj);
+}
+
+static void
+cpixels(void *d EINA_UNUSED, Evas_Object *obj EINA_UNUSED)
+{}
 
 EINTERN void
 compiz_texture_init(CompTexture *texture)
@@ -414,16 +566,30 @@ compiz_texture_init(CompTexture *texture)
    ec = compiz_win_to_client(win);
    e_pixmap_size_get(ec->pixmap, &w, &h);
    cgl = eina_hash_find(textures, &texture);
-   if (cgl)
-     {
-        if ((cgl->w == w) && (cgl->h == h)) return;
-        evas_gl_surface_destroy(gl, cgl->sfc);
-     }
-   else
+   if (cgl) return;
      {
         cgl = malloc(sizeof(Compiz_GL));
         cgl->ctx = evas_gl_context_create(gl, NULL);
         cgl->ec = ec;
+        compiz_client_frame_recalc(ec);
+        cgl->obj = evas_object_image_filled_add(e_comp->evas);
+        evas_object_name_set(cgl->obj, "compiz!");
+        evas_object_event_callback_add(ec->frame, EVAS_CALLBACK_SHOW, (void*)cshow, cgl->obj);
+        evas_object_event_callback_add(ec->frame, EVAS_CALLBACK_HIDE, (void*)chide, cgl->obj);
+        evas_object_smart_callback_add(ec->frame, "shaded", (void*)chide, cgl->obj);
+        evas_object_smart_callback_add(ec->frame, "shade_done", cshade, cgl);
+        evas_object_smart_callback_add(ec->frame, "unshading", (void*)cshow, cgl->obj);
+        evas_object_smart_callback_add(ec->frame, "unshaded", (void*)cshow, cgl->obj);
+        evas_object_smart_callback_add(ec->frame, "dirty", cdirty, cgl);
+        evas_object_image_data_update_add(cgl->obj, 0, 0, e_comp->w, e_comp->h);
+        evas_object_image_alpha_set(cgl->obj, 1);
+        evas_object_pass_events_set(cgl->obj, 1);
+        evas_object_image_pixels_get_callback_set(cgl->obj, cpixels, NULL);
+        evas_object_smart_member_add(cgl->obj, ec->frame);
+        //evas_object_layer_set(cgl->obj, E_LAYER_CLIENT_ABOVE);
+        cgl->damage = eina_tiler_new(e_comp->w, e_comp->h);
+        if (evas_object_visible_get(ec->frame))
+          evas_object_show(cgl->obj);
         evas_gl_make_current(gl, NULL, cgl->ctx);
         compiz_glapi->glGenFramebuffers(1, &cgl->fbo);
         compiz_glapi->glClearColor (0.0, 0.0, 0.0, 0.0);
@@ -448,11 +614,13 @@ compiz_texture_init(CompTexture *texture)
         eina_hash_add(textures, &texture, cgl);
         win->id = window_get(ec);
      }
-   cgl->w = w, cgl->h = h;
-   cgl->sfc = evas_gl_surface_create(gl, glcfg, w, h);
+   compiz_render_resize(cgl);
+   cgl->sfc = evas_gl_surface_create(gl, glcfg, e_comp->w, e_comp->h);
    evas_gl_make_current(gl, cgl->sfc, cgl->ctx);
+   compiz_glapi->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    evas_gl_native_surface_get(gl, cgl->sfc, &ns);
-   e_comp_object_native_surface_override(ec->frame, &ns);
+   evas_object_image_native_surface_set(cgl->obj, &ns);
+   e_comp_object_blank(ec->frame, 1);
 }
 
 EINTERN void
@@ -478,10 +646,21 @@ compiz_texture_del(CompTexture *texture)
    Compiz_GL *cgl;
 
    cgl = eina_hash_set(textures, &texture, NULL);
+   if (!cgl) return; //wtf
+   evas_object_event_callback_del_full(cgl->ec->frame, EVAS_CALLBACK_SHOW, (void*)cshow, cgl->obj);
+   evas_object_event_callback_del_full(cgl->ec->frame, EVAS_CALLBACK_HIDE, (void*)chide, cgl->obj);
+   evas_object_smart_callback_del_full(cgl->ec->frame, "shaded", (void*)chide, cgl->obj);
+   evas_object_smart_callback_del_full(cgl->ec->frame, "shade_done", cshade, cgl);
+   evas_object_smart_callback_del_full(cgl->ec->frame, "unshading", (void*)cshow, cgl->obj);
+   evas_object_smart_callback_del_full(cgl->ec->frame, "unshaded", (void*)cshow, cgl->obj);
+   evas_object_smart_callback_del_full(cgl->ec->frame, "dirty", cdirty, cgl);
    evas_gl_make_current(gl, cgl->sfc, cgl->ctx);
    compiz_glapi->glDeleteFramebuffers(1, &cgl->fbo);
    evas_gl_surface_destroy(gl, cgl->sfc);
    evas_gl_context_destroy(gl, cgl->ctx);
+   evas_object_del(cgl->obj);
+   e_comp_object_blank(cgl->ec->frame, 0);
+   eina_tiler_free(cgl->damage);
    free(cgl);
 }
 
@@ -512,25 +691,43 @@ compiz_mouse_move(void *data EINA_UNUSED, int type EINA_UNUSED, Ecore_Event_Mous
 }
 
 static void
-compiz_gl_init()
+compiz_getOutputExtentsForWindow(CompWindow *w, CompWindowExtents *output)
 {
+   E_Client *ec;
+
+   getOutputExtentsForWindow(w, output);
+   ec = compiz_win_to_client(w);
+   e_comp_object_frame_geometry_get(ec->frame, &output->left, &output->right, &output->top, &output->bottom);
+}
+
+static void
+compiz_gl_init(void)
+{
+   CompDisplay *d;
+   CompScreen *s;
+
    assert(!compiz_main());
+   for (d = core.displays; d; d = d->next)
+     for (s = d->screens; s; s = s->next)
+       s->getOutputExtentsForWindow = compiz_getOutputExtentsForWindow;
 }
 
 static void
 compiz_gl_render(void)
 {
    struct timeval tv;
+
    if (!init)
      {
-        assert(!compiz_main());
+        compiz_gl_init();
         init = EINA_TRUE;
      }
    gettimeofday (&tv, 0);
    handleTimeouts(&tv);
+   compiz_timers();
    fprintf(stderr, "COMPIZ LOOP\n");
    eventLoop();
-   //GLERR;
+   compiz_damage();
 }
 
 static void
@@ -563,11 +760,16 @@ compiz_move_begin(void *d EINA_UNUSED, E_Client *ec)
    unsigned int mask;
 
    w = eina_hash_find(clients, &ec);
+   if (w->grabbed)
+     w->screen->windowUngrabNotify(w);
    movegrab = pushScreenGrab(w->screen, 0, "move");
    mask = CompWindowGrabMoveMask | CompWindowGrabButtonMask;
    w->screen->windowGrabNotify(w, ec->moveinfo.down.mx, ec->moveinfo.down.my, 0, mask);
+   addWindowDamage(w);
    ecx = ec->client.x;
    ecy = ec->client.y;
+   fprintf(stderr, "MOVE START: %d,%d\n", ecx, ecy);
+   fprintf(stderr, "**COMPIZ: %d,%d\n", w->attrib.x, w->attrib.y);
 }
 
 static void
@@ -582,6 +784,9 @@ compiz_move_update(void *d EINA_UNUSED, E_Client *ec)
               TRUE, FALSE);
    ecx = ec->client.x;
    ecy = ec->client.y;
+   syncWindowPosition(w);
+   fprintf(stderr, "MOVE UPDATE: %d,%d\n", ec->client.x, ec->client.y);
+   fprintf(stderr, "**COMPIZ: %d,%d\n", w->attrib.x, w->attrib.y);
 }
 
 static void
@@ -590,9 +795,17 @@ compiz_move_end(void *d EINA_UNUSED, E_Client *ec)
    CompWindow *w;
 
    w = eina_hash_find(clients, &ec);
+   moveWindow(w,
+              -1, -1,
+              TRUE, FALSE);
+   moveWindow(w,
+              1, 1,
+              TRUE, FALSE);
    removeScreenGrab(w->screen, movegrab, NULL);
    movegrab = -1;
-   w->screen->windowUngrabNotify(w);
+   addWindowDamage(w);
+   fprintf(stderr, "MOVE END: %d,%d\n", ec->client.x, ec->client.y);
+   fprintf(stderr, "**COMPIZ: %d,%d\n", w->attrib.x, w->attrib.y);
 }
 
 static void
@@ -616,6 +829,7 @@ gl_fn_init(void)
    GLFN(glEnableClientState);
    GLFN(glDisableClientState);
    GLFN(glTexCoordPointer);
+   GLFN(glFrustumf);
 #undef GLFN  
 }
 
@@ -649,6 +863,8 @@ compiz_init(void)
    hooks = eina_list_append(hooks, e_client_hook_add(E_CLIENT_HOOK_RESIZE_END, compiz_resize_end, NULL));
    events = eina_array_new(1);
    e_comp->pre_render_cbs = eina_list_append(e_comp->pre_render_cbs, compiz_gl_render);
+   compiz_anim = ecore_animator_add(compiz_idle_cb, NULL);
+   ecore_animator_freeze(compiz_anim);
 }
 
 EINTERN void
@@ -656,7 +872,8 @@ compiz_shutdown(void)
 {
    E_FREE_LIST(handlers, ecore_event_handler_del);
    E_FREE_LIST(hooks, e_client_hook_del);
-   E_FREE_FUNC(compiz_idle, ecore_idle_enterer_del);
+   E_FREE_FUNC(compiz_anim, ecore_animator_del);
+   E_FREE_FUNC(compiz_timer, ecore_timer_del);
    compiz_fini();
    E_FREE_FUNC(gl, evas_gl_free);
    E_FREE_FUNC(glcfg, evas_gl_config_free);

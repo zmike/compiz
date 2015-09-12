@@ -61,7 +61,6 @@ finiTexture(CompScreen *screen,
         makeScreenCurrent(screen);
         releasePixmapFromTexture(screen, texture);
         compiz_glapi->glDeleteTextures(1, &texture->name);
-        compiz_texture_del(texture);
      }
 }
 
@@ -88,6 +87,7 @@ destroyTexture(CompScreen *screen,
      return;
 
    finiTexture(screen, texture);
+   compiz_texture_del(texture);
 
    free(texture);
 }

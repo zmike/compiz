@@ -707,9 +707,9 @@ setWindowActions(CompDisplay *display,
    if (actions & CompWindowActionBelowMask)
      data[i++] = display->winActionBelowAtom;
 
-   XChangeProperty(display->display, id, display->wmAllowedActionsAtom,
-                   XA_ATOM, 32, PropModeReplace,
-                   (unsigned char *)data, i);
+   //XChangeProperty(display->display, id, display->wmAllowedActionsAtom,
+                   //XA_ATOM, 32, PropModeReplace,
+                   //(unsigned char *)data, i);
 }
 
 void
@@ -1117,102 +1117,102 @@ updateFrameWindow(CompWindow *w)
 
    if (w->input.left || w->input.right || w->input.top || w->input.bottom)
      {
-        XRectangle rects[4];
-        int x, y, width, height;
-        int i = 0;
-        int bw = w->serverBorderWidth * 2;
+        //XRectangle rects[4];
+        //int x, y, width, height;
+        //int i = 0;
+        //int bw = w->serverBorderWidth * 2;
 
-        x = w->serverX - w->input.left;
-        y = w->serverY - w->input.top;
-        width = w->serverWidth + w->input.left + w->input.right + bw;
-        height = w->serverHeight + w->input.top + w->input.bottom + bw;
+        //x = w->serverX - w->input.left;
+        //y = w->serverY - w->input.top;
+        //width = w->serverWidth + w->input.left + w->input.right + bw;
+        //height = w->serverHeight + w->input.top + w->input.bottom + bw;
 
-        if (w->shaded)
-          height = w->input.top + w->input.bottom;
+        //if (w->shaded)
+          //height = w->input.top + w->input.bottom;
 
-        if (!w->frame)
-          {
-             XSetWindowAttributes attr;
-             XWindowChanges xwc;
+        //if (!w->frame)
+          //{
+             //XSetWindowAttributes attr;
+             //XWindowChanges xwc;
 
-             attr.event_mask = 0;
-             attr.override_redirect = TRUE;
+             //attr.event_mask = 0;
+             //attr.override_redirect = TRUE;
 
-             w->frame = XCreateWindow(d->display, w->screen->root,
-                                      x, y, width, height, 0,
-                                      CopyFromParent,
-                                      InputOnly,
-                                      CopyFromParent,
-                                      CWOverrideRedirect | CWEventMask, &attr);
+             //w->frame = XCreateWindow(d->display, w->screen->root,
+                                      //x, y, width, height, 0,
+                                      //CopyFromParent,
+                                      //InputOnly,
+                                      //CopyFromParent,
+                                      //CWOverrideRedirect | CWEventMask, &attr);
 
-             XGrabButton(d->display, AnyButton, AnyModifier, w->frame, TRUE,
-                         ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-                         GrabModeSync, GrabModeSync, None, None);
+             //XGrabButton(d->display, AnyButton, AnyModifier, w->frame, TRUE,
+                         //ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+                         //GrabModeSync, GrabModeSync, None, None);
 
-             xwc.stack_mode = Below;
-             xwc.sibling = w->id;
+             //xwc.stack_mode = Below;
+             //xwc.sibling = w->id;
 
-             XConfigureWindow(d->display, w->frame,
-                              CWSibling | CWStackMode, &xwc);
+             //XConfigureWindow(d->display, w->frame,
+                              //CWSibling | CWStackMode, &xwc);
 
-             if (w->mapNum || w->shaded)
-               XMapWindow(d->display, w->frame);
+             //if (w->mapNum || w->shaded)
+               //XMapWindow(d->display, w->frame);
 
-             XChangeProperty(d->display, w->id, d->frameWindowAtom,
-                             XA_WINDOW, 32, PropModeReplace,
-                             (unsigned char *)&w->frame, 1);
-          }
+             //XChangeProperty(d->display, w->id, d->frameWindowAtom,
+                             //XA_WINDOW, 32, PropModeReplace,
+                             //(unsigned char *)&w->frame, 1);
+          //}
 
-        XMoveResizeWindow(d->display, w->frame, x, y, width, height);
+        //XMoveResizeWindow(d->display, w->frame, x, y, width, height);
 
-        rects[i].x = 0;
-        rects[i].y = 0;
-        rects[i].width = width;
-        rects[i].height = w->input.top;
+        //rects[i].x = 0;
+        //rects[i].y = 0;
+        //rects[i].width = width;
+        //rects[i].height = w->input.top;
 
-        if (rects[i].width && rects[i].height)
-          i++;
+        //if (rects[i].width && rects[i].height)
+          //i++;
 
-        rects[i].x = 0;
-        rects[i].y = w->input.top;
-        rects[i].width = w->input.left;
-        rects[i].height = height - w->input.top - w->input.bottom;
+        //rects[i].x = 0;
+        //rects[i].y = w->input.top;
+        //rects[i].width = w->input.left;
+        //rects[i].height = height - w->input.top - w->input.bottom;
 
-        if (rects[i].width && rects[i].height)
-          i++;
+        //if (rects[i].width && rects[i].height)
+          //i++;
 
-        rects[i].x = width - w->input.right;
-        rects[i].y = w->input.top;
-        rects[i].width = w->input.right;
-        rects[i].height = height - w->input.top - w->input.bottom;
+        //rects[i].x = width - w->input.right;
+        //rects[i].y = w->input.top;
+        //rects[i].width = w->input.right;
+        //rects[i].height = height - w->input.top - w->input.bottom;
 
-        if (rects[i].width && rects[i].height)
-          i++;
+        //if (rects[i].width && rects[i].height)
+          //i++;
 
-        rects[i].x = 0;
-        rects[i].y = height - w->input.bottom;
-        rects[i].width = width;
-        rects[i].height = w->input.bottom;
+        //rects[i].x = 0;
+        //rects[i].y = height - w->input.bottom;
+        //rects[i].width = width;
+        //rects[i].height = w->input.bottom;
 
-        if (rects[i].width && rects[i].height)
-          i++;
+        //if (rects[i].width && rects[i].height)
+          //i++;
 
-        XShapeCombineRectangles(d->display,
-                                w->frame,
-                                ShapeInput,
-                                0,
-                                0,
-                                rects,
-                                i,
-                                ShapeSet,
-                                YXBanded);
+        //XShapeCombineRectangles(d->display,
+                                //w->frame,
+                                //ShapeInput,
+                                //0,
+                                //0,
+                                //rects,
+                                //i,
+                                //ShapeSet,
+                                //YXBanded);
      }
    else
      {
         if (w->frame)
           {
-             XDeleteProperty(d->display, w->id, d->frameWindowAtom);
-             XDestroyWindow(d->display, w->frame);
+             //XDeleteProperty(d->display, w->id, d->frameWindowAtom);
+             //XDestroyWindow(d->display, w->frame);
              w->frame = None;
           }
      }
@@ -1242,10 +1242,10 @@ setWindowFrameExtents(CompWindow *w,
         updateFrameWindow(w);
         recalcWindowActions(w);
 
-        XChangeProperty(w->screen->display->display, w->id,
-                        w->screen->display->frameExtentsAtom,
-                        XA_CARDINAL, 32, PropModeReplace,
-                        (unsigned char *)data, 4);
+        //XChangeProperty(w->screen->display->display, w->id,
+                        //w->screen->display->frameExtentsAtom,
+                        //XA_CARDINAL, 32, PropModeReplace,
+                        //(unsigned char *)data, 4);
      }
 }
 
@@ -1310,13 +1310,13 @@ setWindowFullscreenMonitors(CompWindow *w,
         data[2] = monitors->left;
         data[3] = monitors->right;
 
-        XChangeProperty(d->display, w->id, d->wmFullscreenMonitorsAtom,
-                        XA_CARDINAL, 32, PropModeReplace,
-                        (unsigned char *)data, 4);
+        //XChangeProperty(d->display, w->id, d->wmFullscreenMonitorsAtom,
+                        //XA_CARDINAL, 32, PropModeReplace,
+                        //(unsigned char *)data, 4);
      }
    else if (hadFsMonitors)
      {
-        XDeleteProperty(d->display, w->id, d->wmFullscreenMonitorsAtom);
+        //XDeleteProperty(d->display, w->id, d->wmFullscreenMonitorsAtom);
      }
 
    if (w->state & CompWindowStateFullscreenMask)
@@ -1417,7 +1417,7 @@ freeWindow(CompWindow *w)
    destroyTexture(w->screen, w->texture);
 
    if (w->frame)
-     XDestroyWindow(w->screen->display->display, w->frame);
+     //XDestroyWindow(w->screen->display->display, w->frame);
 
    if (w->clip)
      XDestroyRegion(w->clip);
@@ -1454,7 +1454,7 @@ freeWindow(CompWindow *w)
 
    if (w->resClass)
      free(w->resClass);
-
+   compiz_win_hash_del(w);
    free(w);
 }
 
@@ -2087,7 +2087,7 @@ addWindow(CompScreen *screen,
       require us to stack other windows relative to it. Setting some default
       values if this is the case. */
    if (e_pixmap_is_x(ec->pixmap))
-     XGetWindowAttributes(d->display, id, &w->attrib);
+     XGetWindowAttributes(d->display, e_pixmap_window_get(ec->pixmap), &w->attrib);
    else
      {
         setDefaultWindowAttributes(&w->attrib);
@@ -2354,7 +2354,6 @@ removeWindow(CompWindow *w)
    (*core.objectRemove)(&w->screen->base, &w->base);
 
    objectFiniPlugins(&w->base);
-   compiz_win_hash_del(w);
    freeWindow(w);
 }
 
@@ -2890,12 +2889,12 @@ syncWindowPosition(CompWindow *w)
    w->serverX = w->attrib.x;
    w->serverY = w->attrib.y;
 
-   XMoveWindow(w->screen->display->display, w->id, w->attrib.x, w->attrib.y);
+   //XMoveWindow(w->screen->display->display, w->id, w->attrib.x, w->attrib.y);
 
-   if (w->frame)
-     XMoveWindow(w->screen->display->display, w->frame,
-                 w->serverX - w->input.left,
-                 w->serverY - w->input.top);
+   //if (w->frame)
+     //XMoveWindow(w->screen->display->display, w->frame,
+                 //w->serverX - w->input.left,
+                 //w->serverY - w->input.top);
 }
 
 Bool
@@ -3547,11 +3546,11 @@ reconfigureXWindow(CompWindow *w,
    if (valueMask & CWBorderWidth)
      w->serverBorderWidth = xwc->border_width;
 
-   XConfigureWindow(w->screen->display->display, w->id, valueMask, xwc);
+   //XConfigureWindow(w->screen->display->display, w->id, valueMask, xwc);
 
-   if (w->frame && (valueMask & (CWSibling | CWStackMode)))
-     XConfigureWindow(w->screen->display->display, w->frame,
-                      valueMask & (CWSibling | CWStackMode), xwc);
+   //if (w->frame && (valueMask & (CWSibling | CWStackMode)))
+     //XConfigureWindow(w->screen->display->display, w->frame,
+                      //valueMask & (CWSibling | CWStackMode), xwc);
 }
 
 static Bool
@@ -4767,8 +4766,8 @@ hideWindow(CompWindow *w)
 
         w->shaded = FALSE;
 
-        if ((w->state & CompWindowStateShadedMask) && w->frame)
-          XUnmapWindow(w->screen->display->display, w->frame);
+        //if ((w->state & CompWindowStateShadedMask) && w->frame)
+          //XUnmapWindow(w->screen->display->display, w->frame);
      }
 
    if (!w->pendingMaps && w->attrib.map_state != IsViewable)
@@ -4776,7 +4775,7 @@ hideWindow(CompWindow *w)
 
    w->pendingUnmaps++;
 
-   XUnmapWindow(w->screen->display->display, w->id);
+   //XUnmapWindow(w->screen->display->display, w->id);
 
    if (w->minimized || w->inShowDesktopMode || w->hidden || w->shaded)
      changeWindowState(w, w->state | CompWindowStateHiddenMask);
@@ -4807,8 +4806,8 @@ showWindow(CompWindow *w)
      {
         w->shaded = TRUE;
 
-        if (w->frame)
-          XMapWindow(w->screen->display->display, w->frame);
+        //if (w->frame)
+          //XMapWindow(w->screen->display->display, w->frame);
 
         if (w->height)
           resizeWindow(w,
@@ -4827,7 +4826,7 @@ showWindow(CompWindow *w)
 
    w->pendingMaps++;
 
-   XMapWindow(w->screen->display->display, w->id);
+   //XMapWindow(w->screen->display->display, w->id);
 
    changeWindowState(w, w->state & ~CompWindowStateHiddenMask);
    setWindowState(w->screen->display, w->state, w->id);
