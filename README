@@ -1,0 +1,35 @@
+DISCLAIMER:
+This software has a high chance of breaking your ability to use
+windows. Not windows like the operating system, but windows like the
+things on your screen which let you use apps.
+
+If you run into issues, ctrl+alt+end (restart enlightenment) is your best bet.
+This is a proof of concept project and will not be actively developed
+unless other developers decide to pick it up.
+
+
+To use:
+
+1) Install compiz-0.8.* plugins
+2) Install compiz settings manager (ccsm)
+3) Enable window effects using ccsm (eg. wobbly)
+4) Set EVAS_GL_UNSAFE_EXTENSIONS=1 EVAS_GL_NO_BLACKLIST=1
+4.5) Hope JP doesn't notice
+5) Start enlightenment from git
+6) Load compiz module
+7) Pray
+
+
+
+Known issues:
+* Screen effects are not yet supported
+* Live previews of windows in enlightenment (eg. pager) do not work
+  while this module is enabled
+* Disabling the module requires a compositor restart to fix rendering
+* Window shading animations may or may not work
+* Desk flips look weird
+
+
+Known working effect plugins:
+* wobbly
+* animation
