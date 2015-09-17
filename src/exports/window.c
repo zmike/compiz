@@ -1497,7 +1497,7 @@ damageWindowOutputExtents(CompWindow *w)
 {
    if (w->screen->damageMask & COMP_SCREEN_DAMAGE_ALL_MASK)
      return;
-
+   return;
    if (w->shaded || (w->attrib.map_state == IsViewable && w->damaged))
      {
         BoxRec box;
@@ -1557,13 +1557,6 @@ addWindowDamageRect(CompWindow *w,
 
    if (!(*w->screen->damageWindowRect)(w, FALSE, &region.extents))
      {
-        E_Client *ec;
-
-        ec = compiz_win_to_client(w);
-        e_comp_object_damage(ec->frame, region.extents.x1, region.extents.y1, region.extents.x2, region.extents.y2);
-        e_comp_object_render_update_del(ec->frame);
-        /* assume that any damages here are going to need a full re-render anyway */
-        compiz_texture_clear(w->texture);
         region.extents.x1 += w->attrib.x + w->attrib.border_width;
         region.extents.y1 += w->attrib.y + w->attrib.border_width;
         region.extents.x2 += w->attrib.x + w->attrib.border_width;
@@ -1595,10 +1588,9 @@ addWindowDamage(CompWindow *w)
      {
         BoxRec box;
 
-        box.x1 = -w->output.left - w->attrib.border_width;
-        box.y1 = -w->output.top - w->attrib.border_width;
-        box.x2 = w->width + w->output.right;
-        box.y2 = w->height + w->output.bottom;
+        box.x1 = box.y1 = 0;
+        box.x2 = w->width;
+        box.y2 = w->height;
 
         addWindowDamageRect(w, &box);
      }

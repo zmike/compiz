@@ -23,6 +23,7 @@
  * Author: David Reveman <davidr@novell.com>
  */
 
+#include "e_mod_main.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -45,7 +46,7 @@ handleWindowDamageRect(CompWindow *w,
                        int height)
 {
    REGION region;
-   Bool initial = FALSE;
+   Bool initial = FALSE, clear = TRUE;
 
    if (!w->redirected || w->bindFailed)
      return;
@@ -70,8 +71,9 @@ handleWindowDamageRect(CompWindow *w,
 
         region.rects = &region.extents;
         region.numRects = region.size = 1;
-
+        noclear = 1;
         damageScreenRegion(w->screen, &region);
+        noclear = 0;
      }
 
    if (initial)
@@ -81,6 +83,7 @@ handleWindowDamageRect(CompWindow *w,
 void
 handleSyncAlarm(CompWindow *w)
 {
+   noclear = 1;
    if (w->syncWait)
      {
         if (w->syncWaitHandle)
@@ -109,7 +112,6 @@ handleSyncAlarm(CompWindow *w)
                                          rects[nDamage].width,
                                          rects[nDamage].height);
                }
-
              w->nDamage = 0;
           }
         else
@@ -119,6 +121,7 @@ handleSyncAlarm(CompWindow *w)
              sendSyncRequest(w);
           }
      }
+   noclear = 0;
 }
 
 static void
@@ -1228,6 +1231,7 @@ handleEvent(CompDisplay *d,
    CompScreen *s;
    CompWindow *w;
 
+   noclear = 1;
    switch (event->type)
      {
       case ButtonPress:
@@ -1257,8 +1261,8 @@ handleEvent(CompDisplay *d,
 
    if (handleActionEvent(d, event))
      {
-        if (!d->screens->maxGrab)
-          XAllowEvents(d->display, AsyncPointer, event->xbutton.time);
+        //if (!d->screens->maxGrab)
+          //XAllowEvents(d->display, AsyncPointer, event->xbutton.time);
 
         return;
      }
@@ -1425,11 +1429,11 @@ handleEvent(CompDisplay *d,
              /* This is the only case where a window is removed but not
                 destroyed. We must remove our event mask and all passive
                 grabs. */
-             XSelectInput(d->display, w->id, NoEventMask);
-             XShapeSelectInput(d->display, w->id, NoEventMask);
-             XUngrabButton(d->display, AnyButton, AnyModifier, w->id);
+             //XSelectInput(d->display, w->id, NoEventMask);
+             //XShapeSelectInput(d->display, w->id, NoEventMask);
+             //XUngrabButton(d->display, AnyButton, AnyModifier, w->id);
 
-             moveInputFocusToOtherWindow(w);
+             //moveInputFocusToOtherWindow(w);
 
              destroyWindow(w);
           }
@@ -2029,22 +2033,22 @@ handleEvent(CompDisplay *d,
         w = findWindowAtDisplay(d, event->xmaprequest.window);
         if (w)
           {
-             XWindowAttributes attr;
+             //XWindowAttributes attr;
              Bool doMapProcessing = TRUE;
 
              /* We should check the override_redirect flag here, because the
                 client might have changed it while being unmapped. */
-             if (XGetWindowAttributes(d->display, w->id, &attr))
-               {
-                  if (w->attrib.override_redirect != attr.override_redirect)
-                    {
-                       w->attrib.override_redirect = attr.override_redirect;
-                       recalcWindowType(w);
-                       recalcWindowActions(w);
+             //if (XGetWindowAttributes(d->display, w->id, &attr))
+               //{
+                  //if (w->attrib.override_redirect != attr.override_redirect)
+                    //{
+                       //w->attrib.override_redirect = attr.override_redirect;
+                       //recalcWindowType(w);
+                       //recalcWindowActions(w);
 
-                       (*d->matchPropertyChanged)(d, w);
-                    }
-               }
+                       //(*d->matchPropertyChanged)(d, w);
+                    //}
+               //}
 
              if (w->state & CompWindowStateHiddenMask)
                if (!w->minimized && !w->inShowDesktopMode)
@@ -2123,15 +2127,15 @@ handleEvent(CompDisplay *d,
                   if (!(w->state & CompWindowStateHiddenMask))
                     showWindow(w);
 
-                  if (focus == CompFocusAllowed)
-                    moveInputFocusToWindow(w);
+                  //if (focus == CompFocusAllowed)
+                    //moveInputFocusToWindow(w);
                }
 
              setWindowProp(d, w->id, d->winDesktopAtom, w->desktop);
           }
         else
           {
-             XMapWindow(d->display, event->xmaprequest.window);
+             //XMapWindow(d->display, event->xmaprequest.window);
           }
         break;
 
@@ -2214,9 +2218,9 @@ handleEvent(CompDisplay *d,
 
              if (w)
                configureXWindow(w, xwcm, &xwc);
-             else
-               XConfigureWindow(d->display, event->xconfigurerequest.window,
-                                xwcm, &xwc);
+             //else
+               //XConfigureWindow(d->display, event->xconfigurerequest.window,
+                                //xwcm, &xwc);
           }
         break;
 
@@ -2238,10 +2242,10 @@ handleEvent(CompDisplay *d,
 
                        addToCurrentActiveWindowHistory(w->screen, w->id);
 
-                       XChangeProperty(d->display, w->screen->root,
-                                       d->winActiveAtom,
-                                       XA_WINDOW, 32, PropModeReplace,
-                                       (unsigned char *)&w->id, 1);
+                       //XChangeProperty(d->display, w->screen->root,
+                                       //d->winActiveAtom,
+                                       //XA_WINDOW, 32, PropModeReplace,
+                                       //(unsigned char *)&w->id, 1);
                     }
 
                   state &= ~CompWindowStateDemandsAttentionMask;
@@ -2450,5 +2454,6 @@ handleEvent(CompDisplay *d,
           }
         break;
      }
+   noclear = 0;
 }
 

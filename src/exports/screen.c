@@ -178,74 +178,74 @@ desktopHintEqual(CompScreen *s,
 static void
 setDesktopHints(CompScreen *s)
 {
-   CompDisplay *d = s->display;
-   unsigned long *data;
-   int size, offset, hintSize, i;
+return;
+   //CompDisplay *d = s->display;
+   //unsigned long *data;
+   //int size, offset, hintSize, i;
+   //size = s->nDesktop * 2 + s->nDesktop * 2 + s->nDesktop * 4 + 1;
 
-   size = s->nDesktop * 2 + s->nDesktop * 2 + s->nDesktop * 4 + 1;
+   //data = malloc(sizeof (unsigned long) * size);
+   //if (!data)
+     //return;
 
-   data = malloc(sizeof (unsigned long) * size);
-   if (!data)
-     return;
+   //offset = 0;
+   //hintSize = s->nDesktop * 2;
 
-   offset = 0;
-   hintSize = s->nDesktop * 2;
+   //for (i = 0; i < s->nDesktop; i++)
+     //{
+        //data[offset + i * 2 + 0] = s->x * s->width;
+        //data[offset + i * 2 + 1] = s->y * s->height;
+     //}
 
-   for (i = 0; i < s->nDesktop; i++)
-     {
-        data[offset + i * 2 + 0] = s->x * s->width;
-        data[offset + i * 2 + 1] = s->y * s->height;
-     }
+   //if (!desktopHintEqual(s, data, size, offset, hintSize))
+     //XChangeProperty(d->display, s->root, d->desktopViewportAtom,
+                     //XA_CARDINAL, 32, PropModeReplace,
+                     //(unsigned char *)&data[offset], hintSize);
 
-   if (!desktopHintEqual(s, data, size, offset, hintSize))
-     XChangeProperty(d->display, s->root, d->desktopViewportAtom,
-                     XA_CARDINAL, 32, PropModeReplace,
-                     (unsigned char *)&data[offset], hintSize);
+   //offset += hintSize;
 
-   offset += hintSize;
+   //for (i = 0; i < s->nDesktop; i++)
+     //{
+        //data[offset + i * 2 + 0] = s->width * s->hsize;
+        //data[offset + i * 2 + 1] = s->height * s->vsize;
+     //}
 
-   for (i = 0; i < s->nDesktop; i++)
-     {
-        data[offset + i * 2 + 0] = s->width * s->hsize;
-        data[offset + i * 2 + 1] = s->height * s->vsize;
-     }
+   //if (!desktopHintEqual(s, data, size, offset, hintSize))
+     //XChangeProperty(d->display, s->root, d->desktopGeometryAtom,
+                     //XA_CARDINAL, 32, PropModeReplace,
+                     //(unsigned char *)&data[offset], hintSize);
 
-   if (!desktopHintEqual(s, data, size, offset, hintSize))
-     XChangeProperty(d->display, s->root, d->desktopGeometryAtom,
-                     XA_CARDINAL, 32, PropModeReplace,
-                     (unsigned char *)&data[offset], hintSize);
+   //offset += hintSize;
+   //hintSize = s->nDesktop * 4;
 
-   offset += hintSize;
-   hintSize = s->nDesktop * 4;
+   //for (i = 0; i < s->nDesktop; i++)
+     //{
+        //data[offset + i * 4 + 0] = s->workArea.x;
+        //data[offset + i * 4 + 1] = s->workArea.y;
+        //data[offset + i * 4 + 2] = s->workArea.width;
+        //data[offset + i * 4 + 3] = s->workArea.height;
+     //}
 
-   for (i = 0; i < s->nDesktop; i++)
-     {
-        data[offset + i * 4 + 0] = s->workArea.x;
-        data[offset + i * 4 + 1] = s->workArea.y;
-        data[offset + i * 4 + 2] = s->workArea.width;
-        data[offset + i * 4 + 3] = s->workArea.height;
-     }
+   //if (!desktopHintEqual(s, data, size, offset, hintSize))
+     //XChangeProperty(d->display, s->root, d->workareaAtom,
+                     //XA_CARDINAL, 32, PropModeReplace,
+                     //(unsigned char *)&data[offset], hintSize);
 
-   if (!desktopHintEqual(s, data, size, offset, hintSize))
-     XChangeProperty(d->display, s->root, d->workareaAtom,
-                     XA_CARDINAL, 32, PropModeReplace,
-                     (unsigned char *)&data[offset], hintSize);
+   //offset += hintSize;
 
-   offset += hintSize;
+   //data[offset] = s->nDesktop;
+   //hintSize = 1;
 
-   data[offset] = s->nDesktop;
-   hintSize = 1;
+   //if (!desktopHintEqual(s, data, size, offset, hintSize))
+     //XChangeProperty(d->display, s->root, d->numberOfDesktopsAtom,
+                     //XA_CARDINAL, 32, PropModeReplace,
+                     //(unsigned char *)&data[offset], hintSize);
 
-   if (!desktopHintEqual(s, data, size, offset, hintSize))
-     XChangeProperty(d->display, s->root, d->numberOfDesktopsAtom,
-                     XA_CARDINAL, 32, PropModeReplace,
-                     (unsigned char *)&data[offset], hintSize);
+   //if (s->desktopHintData)
+     //free(s->desktopHintData);
 
-   if (s->desktopHintData)
-     free(s->desktopHintData);
-
-   s->desktopHintData = data;
-   s->desktopHintSize = size;
+   //s->desktopHintData = data;
+   //s->desktopHintSize = size;
 }
 
 static void

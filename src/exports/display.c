@@ -1639,12 +1639,13 @@ eventLoop(void)
 
                        mask = s->damageMask;
                        s->damageMask = 0;
+                       compiz_damage_mask(mask);
 
-                       if (s->clearBuffers)
-                         {
-                            if (mask & COMP_SCREEN_DAMAGE_ALL_MASK)
-                              compiz_glapi->glClear(GL_COLOR_BUFFER_BIT);
-                         }
+                       //if (s->clearBuffers)
+                         //{
+                            //if (mask & COMP_SCREEN_DAMAGE_ALL_MASK)
+                              //compiz_glapi->glClear(GL_COLOR_BUFFER_BIT);
+                         //}
 
                        if (s->opt[COMP_SCREEN_OPTION_FORCE_INDEPENDENT].value.b
                            || !s->hasOverlappingOutputs)
@@ -1727,24 +1728,6 @@ eventLoop(void)
 
                        (*s->donePaintScreen)(s);
 
-                       /* remove destroyed windows */
-                       while (s->pendingDestroys)
-                         {
-                            CompWindow *w;
-
-                            for (w = s->windows; w; w = w->next)
-                              {
-                                 if (w->destroyed)
-                                   {
-                                      addWindowDamage(w);
-                                      removeWindow(w);
-                                      break;
-                                   }
-                              }
-
-                            s->pendingDestroys--;
-                         }
-
                        s->idle = FALSE;
                     }
                }
@@ -1762,6 +1745,23 @@ eventLoop(void)
              else
                {
                   s->idle = TRUE;
+               }
+             /* remove destroyed windows */
+             while (s->pendingDestroys)
+               {
+                  CompWindow *w;
+
+                  for (w = s->windows; w; w = w->next)
+                    {
+                       if (w->destroyed)
+                         {
+                            addWindowDamage(w);
+                            removeWindow(w);
+                            break;
+                         }
+                    }
+
+                  s->pendingDestroys--;
                }
           }
      }
@@ -2512,6 +2512,18 @@ addDisplay(const char *name)
                        "No manageable screens found on display %s",
                        XDisplayName(name));
         return FALSE;
+   
+     }
+
+   CompScreen *s;
+   for (s = d->screens; s; s = s->next)
+     {
+        E_Zone *zone = eina_list_nth(e_comp->zones, s->screenNum);
+
+        s->x = zone->desk_x_current;
+        s->y = zone->desk_y_current;
+        s->hsize = zone->desk_x_count;
+        s->vsize = zone->desk_y_count;
      }
 
    //setAudibleBell (d, d->opt[COMP_DISPLAY_OPTION_AUDIBLE_BELL].value.b);

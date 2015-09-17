@@ -389,5 +389,6 @@ compiz_fini(void)
 
    if (initialPlugins)
      free(initialPlugins);
+   memset(&core, 0, sizeof(core));
 }
 

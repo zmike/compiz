@@ -309,7 +309,7 @@ extern Mod *compiz_mod;
 extern Config *compiz_config;
 extern Evas_GL *gl;
 extern Evas_GL_API *compiz_glapi;
-
+extern Eina_Bool noclear;
 
 EINTERN void compiz_init(void);
 EINTERN void compiz_shutdown(void);
@@ -323,6 +323,8 @@ EINTERN void compiz_texture_del(CompTexture *texture);
 EINTERN void compiz_texture_init(CompTexture *texture);
 EINTERN void compiz_texture_bind(CompTexture *texture);
 EINTERN void compiz_texture_to_win(CompTexture *texture, CompWindow *win);
-EINTERN void compiz_texture_activate(CompTexture *texture, Eina_Bool set);
+EINTERN void compiz_texture_activate(CompTexture *texture, Eina_Bool set, Region region);
 EINTERN void compiz_texture_clear(CompTexture *texture);
+
+EINTERN void compiz_damage_mask(unsigned int mask);
 #endif

@@ -229,6 +229,11 @@ finiCore(void)
    while ((p = popPlugin()))
      unloadPlugin(p);
 
+   free(core.base.privates);
+   corePrivateIndices = NULL;
+   core.base.privates = NULL;
+   corePrivateLen = 0;
+
    XDestroyRegion(core.outputRegion);
    XDestroyRegion(core.tmpRegion);
 }

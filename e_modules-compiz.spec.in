@@ -1,4 +1,4 @@
-%define module_name desksanity
+%define module_name compiz
 %{!?_rel:%{expand:%%global _rel 0.enl%{?dist}}}
 
 Summary: %{module_name} module for the Enlightenment window manager

@@ -30,6 +30,10 @@
 
 #include <compiz-core.h>
 
+static Bool internaldraw = FALSE;
+static	WindowPaintAttrib pendingAttrib;
+static	CompTransform pendingTransform;
+
 ScreenPaintAttrib defaultScreenPaintAttrib = {
    0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -DEFAULT_Z_CAMERA
 };
@@ -309,6 +313,7 @@ paintOutputRegion(CompScreen *screen,
 
              odMask = PAINT_WINDOW_OCCLUSION_DETECTION_MASK;
 
+             memcpy(&pendingAttrib, &w->paint, sizeof(pendingAttrib));
              if ((screen->windowOffsetX != 0 || screen->windowOffsetY != 0) &&
                  !windowOnAllViewports(w))
                {
@@ -324,12 +329,14 @@ paintOutputRegion(CompScreen *screen,
                   XOffsetRegion(w->clip, -offX, -offY);
 
                   odMask |= PAINT_WINDOW_WITH_OFFSET_MASK;
+                  memcpy(&pendingTransform, &vTransform, sizeof(pendingTransform));
                   status = (*screen->paintWindow)(w, &w->paint, &vTransform,
                                                   tmpRegion, odMask);
                }
              else
                {
                   withOffset = FALSE;
+                  pendingTransform = *transform;
                   status = (*screen->paintWindow)(w, &w->paint, transform, tmpRegion,
                                                   odMask);
                }
@@ -737,6 +744,7 @@ addWindowGeometry(CompWindow *w,
 {
    BoxRec full;
 
+   internaldraw = TRUE;
    w->texUnits = nMatrix;
 
    full = clip->extents;
@@ -1218,7 +1226,10 @@ drawWindow(CompWindow *w,
      mask |= PAINT_WINDOW_BLEND_MASK;
 
    w->vCount = w->indexCount = 0;
+   internaldraw = FALSE;
    (*w->screen->addWindowGeometry)(w, &w->matrix, 1, w->region, region);
+   if (w->indexCount || (w->id == 1) || (w->drawWindowGeometry != drawWindowGeometry) || (!internaldraw))
+     compiz_glapi->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    if (w->vCount)
      (*w->screen->drawWindowTexture)(w, w->texture, fragment, mask);
 
@@ -1263,7 +1274,7 @@ paintWindow(CompWindow *w,
      return TRUE;
 
    compiz_texture_init(w->texture);
-   compiz_texture_activate(w->texture, 1);
+   compiz_texture_activate(w->texture, 1, region);
    initFragmentAttrib(&fragment, attrib);
 
    //if (mask & PAINT_WINDOW_TRANSFORMED_MASK ||
@@ -1273,13 +1284,15 @@ paintWindow(CompWindow *w,
         compiz_glapi->glLoadMatrixf(transform->m);
      }
 
+   if (memcmp(attrib, &pendingAttrib, sizeof(pendingAttrib)) || memcmp(transform, &pendingTransform, sizeof(pendingTransform)))
+     compiz_glapi->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    status = (*w->screen->drawWindow)(w, transform, &fragment, region, mask);
 
    //if (mask & PAINT_WINDOW_TRANSFORMED_MASK ||
        //mask & PAINT_WINDOW_WITH_OFFSET_MASK)
      compiz_glapi->glPopMatrix();
 
-   compiz_texture_activate(w->texture, 0);
+   compiz_texture_activate(w->texture, 0, NULL);
 
    return status;
 }
